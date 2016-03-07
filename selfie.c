@@ -6421,7 +6421,8 @@ int main(int argc, int *argv) {
 
     argc = argc - 1;
     argv = argv + 1;
-
+    print((int*)"This is knights Selfie");
+    println();
     if (selfie(argc, (int*) argv) != 0) {
         print(selfieName);
         print((int*) ": usage: selfie { -c source | -o binary | -s assembly | -l binary } [ -m size ... | -d size ... | -y size ... ] ");
