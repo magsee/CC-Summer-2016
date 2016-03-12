@@ -647,7 +647,7 @@ int opcode      = 0;
 int rs          = 0;
 int rt          = 0;
 int rd          = 0;
-int shamt	= 0;
+int shamt		= 0;
 int immediate   = 0;
 int function    = 0;
 int instr_index = 0;
@@ -670,8 +670,8 @@ void initDecoder() {
 
     *(FUNCTIONS + FCT_SLL)     = (int) "sll";
 	*(FUNCTIONS + FCT_SRL)     = (int) "srl";
-	*(FUNCTIONS + FCT_SLLV)     = (int) "sllv";
-    *(FUNCTIONS + FCT_SRLV)     = (int) "srlv";
+	*(FUNCTIONS + FCT_SLLV)    = (int) "sllv";
+    *(FUNCTIONS + FCT_SRLV)    = (int) "srlv";
     *(FUNCTIONS + FCT_JR)      = (int) "jr";
     *(FUNCTIONS + FCT_SYSCALL) = (int) "syscall";
     *(FUNCTIONS + FCT_MFHI)    = (int) "mfhi";
