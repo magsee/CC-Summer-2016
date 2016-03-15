@@ -3809,7 +3809,6 @@ void decodeRFormat() {
     function    = getFunction(ir);
     //TODO: research cost of if vs cost of shift
     shamt	= getShamt(ir);
-    shamt	= getShamt(ir);
     instr_index = 0;
 }
 
