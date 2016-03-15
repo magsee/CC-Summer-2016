@@ -36,11 +36,11 @@
 // into the emulator.
 //
 // C* is a tiny Turing-complete subset of C that includes dereferencing
-// (the * operator) but excludes data structures, bitwise and Boolean
+// (the * operator) but excludes composite data types, bitwise and Boolean
 // operators, and many other features. There are only signed 32-bit
 // integers and pointers as well as character and string literals.
 // This choice turns out to be helpful for students to understand the
-// true role of composite data structures such as arrays and records.
+// true role of composite data types such as arrays and records.
 // Bitwise operations are implemented in libcstar using signed integer
 // arithmetics helping students gain true understanding of two's complement.
 // C* is supposed to be close to the minimum necessary for implementing
@@ -2600,7 +2600,11 @@ int gr_factor() {
 
             talloc();
 
+            // retrieve return value
             emitIFormat(OP_ADDIU, REG_V0, currentTemporary(), 0);
+
+            // reset return register
+            emitIFormat(OP_ADDIU, REG_ZR, REG_V0, 0);
         } else
             // variable access: identifier
             type = load_variable(variableOrProcedureName);
@@ -3150,6 +3154,9 @@ void gr_statement() {
 
             gr_call(variableOrProcedureName);
 
+            // reset return register
+            emitIFormat(OP_ADDIU, REG_ZR, REG_V0, 0);
+
             if (symbol == SYM_SEMICOLON)
                 getSymbol();
             else
@@ -3539,9 +3546,11 @@ void emitMainEntry() {
     // jump and link to main, will return here only if there is no exit call
     emitJFormat(OP_JAL, 0);
 
-    // we exit cleanly with error code 0 pushed onto the stack
+    // we exit with error code in return register pushed onto the stack
     emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
-    emitIFormat(OP_SW, REG_SP, REG_ZR, 0);
+    emitIFormat(OP_SW, REG_SP, REG_V0, 0);
+
+    // no need to reset return register here
 }
 
 void fixRegisterInitialization() {
@@ -4029,6 +4038,9 @@ int* touch(int *memory, int length) {
         // touch at end
         n = *m;
     }
+
+    // avoids unused warning for n
+    n = 0; n = n + 1;
 
     return memory;
 }
@@ -6611,3 +6623,4 @@ int main(int argc, int *argv) {
     }
 	return 0;
 }
+
