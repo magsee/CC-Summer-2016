@@ -625,8 +625,8 @@ int OP_SW      = 43;
     
 int *OPCODES; // array of strings representing MIPS opcodes
 
-int FCT_SLL	    = 0;
-int FCT_SRL	    = 2;
+int FCT_SLL     = 0;
+int FCT_SRL     = 2;
 int FCT_SLLV    = 4;
 int FCT_SRLV    = 6;
 int FCT_JR      = 8;
@@ -647,7 +647,7 @@ int opcode      = 0;
 int rs          = 0;
 int rt          = 0;
 int rd          = 0;
-int shamt		= 0;
+int shamt       = 0;
 int immediate   = 0;
 int function    = 0;
 int instr_index = 0;
@@ -3807,13 +3807,9 @@ void decodeRFormat() {
     rd          = getRD(ir);
     immediate   = 0;
     function    = getFunction(ir);
-    //only get shamt for sll or srl	
-    if (function == 0) {
-        shamt	= getShamt(ir);
-    }
-    if (function == 2) {
-        shamt	= getShamt(ir);
-    }
+    //TODO: research cost of if vs cost of shift
+    shamt	= getShamt(ir);
+    shamt	= getShamt(ir);
     instr_index = 0;
 }
 
