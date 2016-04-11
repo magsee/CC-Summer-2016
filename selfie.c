@@ -6674,6 +6674,7 @@ int main(int argc, int *argv) {
     argc = argc - 1;
     argv = argv + 1;
     print((int*)"This is knights Selfie");
+    print((int*)"Test");s
     println();
     if (selfie(argc, (int*) argv) != 0) {
         print(selfieName);
