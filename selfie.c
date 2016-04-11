@@ -1186,9 +1186,9 @@ int leftShift(int n, int b) {
     // assert: b >= 0;
 
     if (b < 31)
-        return n * twoToThePowerOf(b);
+        return n << b;
     else if (b == 31)
-        return n * twoToThePowerOf(30) * 2;
+        return (n << 30) * 2;
     else
         return 0;
 }
@@ -5792,7 +5792,7 @@ void fct_sllv() {
     }
 
     if (interpret) {
-        *(registers+rd) = leftShift(*(registers+rs), *(registers+rt));
+        *(registers+rs) = leftShift(*(registers+rt), *(registers+rd));
 
         pc = pc + WORDSIZE;
     }
@@ -5945,6 +5945,8 @@ void execute() {
     if (opcode == OP_SPECIAL) {
         if (function == FCT_SLL)
             fct_sll();
+        else if (function == FCT_SRL)
+            fct_srl();
         else if (function == FCT_ADDU)
             fct_addu();
         else if (function == FCT_SUBU)
@@ -5953,6 +5955,10 @@ void execute() {
             fct_multu();
         else if (function == FCT_DIVU)
             fct_divu();
+        else if (function == FCT_SLLV)
+            fct_sllv();
+        else if (function == FCT_SRLV)
+            fct_srlv();
         else if (function == FCT_MFHI)
             fct_mfhi();
         else if (function == FCT_MFLO)
