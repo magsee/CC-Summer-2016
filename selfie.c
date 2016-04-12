@@ -1193,7 +1193,7 @@ int rightShift(int n, int b) {
 
     if (n >= 0) {
         if (b < 31)
-            return n / twoToThePowerOf(b);
+            return n >> b;
         else
             return 0;
     } else if (b < 31)
