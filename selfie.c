@@ -1185,12 +1185,7 @@ int twoToThePowerOf(int p) {
 int leftShift(int n, int b) {
     // assert: b >= 0;
 
-    if (b < 31)
-        return n << b;
-    else if (b == 31)
-        return (n << 30) * 2;
-    else
-        return 0;
+    return n << b;
 }
 
 int rightShift(int n, int b) {
@@ -2833,11 +2828,11 @@ int gr_shiftExpression() {
 
         if (operatorSymbol == SYM_LSHIFT) {
 
-            emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SLLV);
+            emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLLV);
 
         } else if (operatorSymbol == SYM_RSHIFT) {
 
-            emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SRLV);
+            emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SRLV);
         }
 
         tfree(1);
@@ -5792,7 +5787,7 @@ void fct_sllv() {
     }
 
     if (interpret) {
-        *(registers+rs) = leftShift(*(registers+rt), *(registers+rd));
+        *(registers+rd) = *(registers+rt) << *(registers+rs);
 
         pc = pc + WORDSIZE;
     }
@@ -5834,7 +5829,7 @@ void fct_srlv() {
     }
 
     if (interpret) {
-        *(registers+rd) = rightShift(*(registers+rs), *(registers+rt));
+        *(registers+rd) = *(registers+rt) >> *(registers+rs);
 
         pc = pc + WORDSIZE;
     }
@@ -6666,6 +6661,9 @@ int selfie(int argc, int* argv) {
 
 int main(int argc, int *argv) {
 
+    int x;
+    x = -32;
+    
     initLibrary();
 
     initScanner();
@@ -6680,7 +6678,9 @@ int main(int argc, int *argv) {
     argc = argc - 1;
     argv = argv + 1;
     print((int*)"This is knights Selfie");
-    print((int*)"Test");
+    println();
+    x = x >> 1;
+    print(itoa(x, string_buffer, 10, 0, 0));
     println();
     if (selfie(argc, (int*) argv) != 0) {
         print(selfieName);
