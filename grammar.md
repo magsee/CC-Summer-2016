@@ -15,6 +15,8 @@ digit            = "0" | ... | "9" .
 
 integer          = digit { digit } .
 
+constant         = integer { ( "+" | "-" | "*" | "/" | "%" | "<<" | ">>" ) integer } .
+
 letter           = "a" | ... | "z" | "A" | ... | "Z" .
 
 identifier       = letter { letter | digit | "_" } .
@@ -30,7 +32,7 @@ literal          = integer | "'" ascii_character "'" .
 factor           = [ cast ] 
                     ( [ "*" ] ( identifier | "(" expression ")" ) |
                       call |
-                      literal |
+                      literal | constant | 
                       """ { ascii_character } """ ) .
 
 term             = factor { ( "*" | "/" | "%" ) factor } .
