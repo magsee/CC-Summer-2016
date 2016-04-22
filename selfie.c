@@ -2694,11 +2694,6 @@ int gr_term() {
     int previousValue;
     int codeGenerated;
 
-    int emitIsToDo;
-    int emitAtTheEnd;
-    int emitSymbol;
-    int emitValue;
-
     constant = malloc(2 * SIZEOFINTSTAR);
 
     // assert: n = allocatedTemporaries
@@ -2706,12 +2701,7 @@ int gr_term() {
     ltype = gr_factor(constant);
     if(*constant)
       load_integer(*(constant + 1));
-    else{
-      emitIsToDo = 1;
-      emitAtTheEnd = 1;
-      emitSymbol = symbol;
-      emitValue = *(constant + 1);
-    }
+
 
     isPreviousConstant = *constant;
     previousValue = *(constant + 1);
@@ -2734,81 +2724,51 @@ int gr_term() {
           if(*constant == 0)
             isPreviousConstant = 0;
 
-
         // assert: allocatedTemporaries == n + 2
 
         if (ltype != rtype)
             typeWarning(ltype, rtype);
 
-
-        if(emitIsToDo){
-          if(*constant){
-            //Fall x = x + 1
-            //emitIsToDo still 1
-            previousValue = *(constant + 1);
-            isPreviousConstant = 1;
-          }else{
-            //Fall x = x + x
-            emitIsToDo = 0;
+        if (operatorSymbol == SYM_ASTERISK) {
+          if (isPreviousConstant) {
+            print(itoa((int)previousValue, string_buffer, 10, 0, 0));
+            print((int*) " * ");
+            print(itoa((int)*(constant + 1), string_buffer, 10, 0, 0));
+            print((int*) " = ");
+            previousValue = previousValue * *(constant + 1);
+            print(itoa((int)previousValue, string_buffer, 10, 0, 0));
+            println();
+            load_integer(previousValue);
+            codeGenerated = 0;
+          } else {
+            emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
+            emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+            codeGenerated = 1;
           }
-        }//emitIsToDo = 0 if x = 1 + 2; x = x + x; x = 1 + x;
-
-        if(emitIsToDo == 0){
-          if (operatorSymbol == SYM_ASTERISK) {
-            if (isPreviousConstant) {
-              previousValue = previousValue * *(constant + 1);
-              load_integer(previousValue);
-              codeGenerated = 0;
-            } else {
-              emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
-              emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
-              codeGenerated = 1;
-            }
-          } else if (operatorSymbol == SYM_DIV) {
-            if (isPreviousConstant) {
-              previousValue = previousValue / *(constant + 1);
-              load_integer(previousValue);
-              codeGenerated = 0;
-            } else {
-              emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
-              emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
-              codeGenerated = 1;
-            }
-          } else if (operatorSymbol == SYM_MOD) {
-            if (isPreviousConstant) {
-              previousValue = previousValue % *(constant + 1);
-              load_integer(previousValue);
-              codeGenerated = 0;
-            } else {
-              emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
-              emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFHI);
-              codeGenerated = 1;
-            }
+        } else if (operatorSymbol == SYM_DIV) {
+          if (isPreviousConstant) {
+            previousValue = previousValue / *(constant + 1);
+            load_integer(previousValue);
+            codeGenerated = 0;
+          } else {
+            emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
+            emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+            codeGenerated = 1;
           }
-
+        } else if (operatorSymbol == SYM_MOD) {
+          if (isPreviousConstant) {
+            previousValue = previousValue % *(constant + 1);
+            load_integer(previousValue);
+            codeGenerated = 0;
+          } else {
+            emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
+            emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFHI);
+            codeGenerated = 1;
+          }
         }
-        emitIsToDo = 0;
-
         if (codeGenerated)
           tfree(1);
     }
-
-    if(emitAtTheEnd){//Fall x = x + 1
-      if (emitSymbol == SYM_ASTERISK) {
-          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
-          emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
-          codeGenerated = 1;
-      } else if (emitSymbol == SYM_DIV) {
-          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
-          emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
-          codeGenerated = 1;
-      } else if (emitSymbol == SYM_MOD) {
-          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
-          emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFHI);
-          codeGenerated = 1;
-        }
-        tfree(1);
-      }
 
     // assert: allocatedTemporaries == n + 1
 
