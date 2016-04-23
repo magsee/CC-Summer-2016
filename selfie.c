@@ -2741,7 +2741,7 @@ int gr_term() {
             typeWarning(ltype, rtype);
 
         if (operatorSymbol == SYM_ASTERISK) {
-          if (toFold) {
+          if (toFold) { // x = 2 * 3;
             print(itoa((int)previousValue, string_buffer, 10, 0, 0));
             print((int*) " * ");
             print(itoa((int)currentValue, string_buffer, 10, 0, 0));
@@ -2750,14 +2750,14 @@ int gr_term() {
             print(itoa((int)previousValue, string_buffer, 10, 0, 0));
             println();
             codeGenerated = 0;
-          } else if (isCurrentConstant) {
+          } else if (isCurrentConstant) { //x = x * 2;
             isPreviousConstant = 1;
             previousValue = currentValue;
             unhandledFactors = 1;
             unhandledOperator = operatorSymbol;
             codeGenerated = 0;
           } else {
-            if (isPreviousConstant) {
+            if (isPreviousConstant) { //x = 2 * x;
               load_integer(previousValue);
               print((int*) "loaded ");
               print(itoa((int)previousValue, string_buffer, 10, 0, 0));
@@ -2765,14 +2765,14 @@ int gr_term() {
               emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), 0, FCT_MULTU);
               emitRFormat(OP_SPECIAL, 0, 0, currentTemporary(), FCT_MFLO);
               codeGenerated = 1;
-            } else {
+            } else { //x = x * y;
               emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
               emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
               codeGenerated = 1;
             }
           }
         } else if (operatorSymbol == SYM_DIV) {
-          if (toFold) {
+          if (toFold) { //x = 2 / 3;
             //if (unhandledFactors == 0) {
               print(itoa((int)previousValue, string_buffer, 10, 0, 0));
               print((int*) " / ");
@@ -2783,14 +2783,14 @@ int gr_term() {
               println();
               codeGenerated = 0;
             //}
-          } else if (isCurrentConstant) {
+          } else if (isCurrentConstant) { // x = x / 2;
             isPreviousConstant = 1;
             previousValue = currentValue;
             unhandledFactors = 1;
             unhandledOperator = operatorSymbol;
             codeGenerated = 0;
           } else {
-            if (isPreviousConstant) {
+            if (isPreviousConstant) { // x = 2 / x;
               load_integer(previousValue);
               print((int*) "loaded ");
               print(itoa((int)previousValue, string_buffer, 10, 0, 0));
@@ -2798,26 +2798,26 @@ int gr_term() {
               emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), 0, FCT_DIVU);
               emitRFormat(OP_SPECIAL, 0, 0, currentTemporary(), FCT_MFLO);
               codeGenerated = 1;
-            } else {
+            } else { // x = x / y;
               emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
               emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
               codeGenerated = 1;
             }
           }
         } else if (operatorSymbol == SYM_MOD) {
-          if (toFold) {
+          if (toFold) { // x = 2 % 3;
             //if (unhandledFactors == 0) {
               previousValue = previousValue % currentValue;
               codeGenerated = 0;
             //}
-          } else if (isCurrentConstant) {
+          } else if (isCurrentConstant) { // x = x % 2;
             isPreviousConstant = 1;
             previousValue = currentValue;
             unhandledFactors = 1;
             unhandledOperator = operatorSymbol;
             codeGenerated = 0;
           } else {
-            if (isPreviousConstant) {
+            if (isPreviousConstant) { // x = 2 % x;
               load_integer(previousValue);
               print((int*) "loaded ");
               print(itoa((int)previousValue, string_buffer, 10, 0, 0));
@@ -2825,7 +2825,7 @@ int gr_term() {
               emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), 0, FCT_DIVU);
               emitRFormat(OP_SPECIAL, 0, 0, currentTemporary(), FCT_MFHI);
               codeGenerated = 1;
-            } else {
+            } else { // x = x % y;
               emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
               emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFHI);
               codeGenerated = 1;
@@ -2853,7 +2853,7 @@ int gr_term() {
       println();
     }
 
-    if (unhandledFactors) {
+    if (unhandledFactors) { // x = x * 2;
       if (isCurrentConstant) {
           load_integer(previousValue);
           print((int*) "loaded ");
