@@ -2773,7 +2773,7 @@ int gr_term() {
           }
         } else if (operatorSymbol == SYM_DIV) {
           if (toFold) {
-            if (unhandledFactors == 0) {
+            //if (unhandledFactors == 0) {
               print(itoa((int)previousValue, string_buffer, 10, 0, 0));
               print((int*) " / ");
               print(itoa((int)currentValue, string_buffer, 10, 0, 0));
@@ -2782,7 +2782,7 @@ int gr_term() {
               print(itoa((int)previousValue, string_buffer, 10, 0, 0));
               println();
               codeGenerated = 0;
-            }
+            //}
           } else if (isCurrentConstant) {
             isPreviousConstant = 1;
             previousValue = currentValue;
@@ -2806,10 +2806,10 @@ int gr_term() {
           }
         } else if (operatorSymbol == SYM_MOD) {
           if (toFold) {
-            if (unhandledFactors == 0) {
+            //if (unhandledFactors == 0) {
               previousValue = previousValue % currentValue;
               codeGenerated = 0;
-            }
+            //}
           } else if (isCurrentConstant) {
             isPreviousConstant = 1;
             previousValue = currentValue;
@@ -6832,11 +6832,10 @@ int main(int argc, int *argv) {
     argv = argv + 1;
     print((int*)"This is knights Selfie");
     println();
-    x = 2;
+    x = 1;
+    x = 2 * 1 * 2;
     x = x * 3 / 6;
-    print((int*) "x = ");
-    print(itoa((int)x, string_buffer, 10, 0, 0));
-    println();
+    //x = 6 / 3;
     if (selfie(argc, (int*) argv) != 0) {
         print(selfieName);
         print((int*) ": usage: selfie { -c source | -o binary | -s assembly | -l binary } [ -m size ... | -d size ... | -y size ... ] ");
