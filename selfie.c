@@ -2839,14 +2839,14 @@ int gr_term() {
         }
     }
 
-    if (toFold == -1) {
-      if (isPreviousConstant) {
+    if (toFold == -1) { // allocation
+      if (isPreviousConstant) { // allocation of a constant
         load_integer(previousValue);
         print((int*) "loaded ");
         print(itoa((int)previousValue, string_buffer, 10, 0, 0));
         println();
       }
-    } else if (toFold) {
+    } else if (toFold) { // if the last value in the while was a constant
       load_integer(previousValue);
       print((int*) "loaded ");
       print(itoa((int)previousValue, string_buffer, 10, 0, 0));
@@ -2854,7 +2854,7 @@ int gr_term() {
     }
 
     if (unhandledFactors) { // x = x * 2;
-      if (isCurrentConstant) {
+      if (isCurrentConstant) { 
           load_integer(previousValue);
           print((int*) "loaded ");
           print(itoa((int)previousValue, string_buffer, 10, 0, 0));
@@ -6834,7 +6834,7 @@ int main(int argc, int *argv) {
     println();
     x = 1;
     x = 2 * 1 * 2;
-    x = x * 3 / 6;
+    x = x * 6 / 3;
     //x = 6 / 3;
     if (selfie(argc, (int*) argv) != 0) {
         print(selfieName);
