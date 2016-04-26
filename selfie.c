@@ -6724,7 +6724,7 @@ int main(int argc, int *argv) {
     argv = argv + 1;
     print((int*)"This is knights Selfie");
     println();
-    x = 6 / 3;
+    x = 6 * 3;
     print(itoa(x, string_buffer, 10, 0, 0));
     println();
     if (selfie(argc, (int*) argv) != 0) {
