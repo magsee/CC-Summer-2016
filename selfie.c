@@ -460,7 +460,7 @@ void help_procedure_prologue(int localVariables);
 void help_procedure_epilogue(int parameters);
 
 int  gr_call(int *procedure);
-int  gr_factor();
+int  gr_factor(int* constant);
 int  gr_term();
 int  gr_simpleExpression();
 int  gr_shiftExpression();
@@ -724,7 +724,7 @@ void selfie_load();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-int maxBinaryLength = 131072; // 128KB
+int maxBinaryLength = 262144; // 128KB
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -2171,7 +2171,7 @@ int lookForStatement() {
         return 1;
 }
 
-int lookForType
+int lookForType(){
     if (symbol == SYM_INT)
         return 0;
     else if (symbol == SYM_VOID)
@@ -2529,7 +2529,7 @@ int gr_call(int *procedure) {
     return type;
 }
 
-int gr_factor() {
+int gr_factor(int* constant) {
     int hasCast;
     int cast;
     int type;
@@ -2638,6 +2638,9 @@ int gr_factor() {
     // integer?
     } else if (symbol == SYM_INTEGER) {
 
+        *constant = 1;
+        *(constant + 1) = literal;
+
         getSymbol();
 
         *constant = 1;
@@ -2684,7 +2687,7 @@ int gr_factor() {
         return type;
 }
 
-int gr_term() {
+int gr_term(int* constant) {
     int ltype;
     int previousValue;
     int previousOperator;
@@ -2693,28 +2696,48 @@ int gr_term() {
     int currentOperator;
     int isConstant;
 
+    int isPreviousConstant;
+    int previousValue;
+    int isCurrentConstant;
+    int currentValue;
+    int toFold;
+    int codeGenerated;
+
+    codeGenerated = 0;
+
+
+
     // assert: n = allocatedTemporaries
 
-    ltype = gr_factor(*constant);
+    ltype = gr_factor(constant);
+
+    isPreviousConstant = *constant;
+    previousValue = *(constant + 1);
 
     isConstant = *constant;
     previousValue = *(constant + 1);
 
-    if (isConstant == 0)
-      previousSymbol = symbol;
+  //  if (isConstant == 0)
+  //    previousSymbol = symbol;
     // assert: allocatedTemporaries == n + 1
 
     // * / or % ?
     while (isStarOrDivOrModulo()) {
         operatorSymbol = symbol;
 
+        *constant = 0;
+        toFold = 0;
+
         getSymbol();
 
-        rtype = gr_factor(*constant);
+        rtype = gr_factor(constant);
 
-        if (*constant)
-          if (isConstant == 0)
-            *constant = 0;
+        isCurrentConstant = *constant;
+        currentValue = *(constant + 1);
+
+        if (isPreviousConstant)
+          if(isCurrentConstant)
+            toFold = 1;
 
         // assert: allocatedTemporaries == n + 2
 
@@ -2722,23 +2745,123 @@ int gr_term() {
             typeWarning(ltype, rtype);
 
         if (operatorSymbol == SYM_ASTERISK) {
-            if (*constant) {
-              currentValue = currentValue * *(constant + 1);
+          if (toFold) {
+            print(itoa((int)previousValue, string_buffer, 10, 0, 0));
+            print((int*) " * ");
+            print(itoa((int)currentValue, string_buffer, 10, 0, 0));
+            print((int*) " = ");
+            previousValue = previousValue * currentValue;
+            print(itoa((int)previousValue, string_buffer, 10, 0, 0));
+            println();
+            codeGenerated = 0;
+          } else {
+            if (isPreviousConstant) {
+              load_integer(previousValue);
+              print((int*) "loaded ");
+              print(itoa((int)previousValue, string_buffer, 10, 0, 0));
+              println();
+              emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), 0, FCT_MULTU);
+              emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+              isPreviousConstant = 0;
+              codeGenerated = 1;
             } else {
+              if (isCurrentConstant) {
+                load_integer(currentValue);
+                //print((int*) "loaded ");
+                //print(itoa((int)currentValue, string_buffer, 10, 0, 0));
+                //println();
+              }
               emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
               emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
-              isConstant = 0;
+              codeGenerated = 1;
             }
+          }
         } else if (operatorSymbol == SYM_DIV) {
-            emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
-            emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
-
+          if (toFold) {
+            print(itoa((int)previousValue, string_buffer, 10, 0, 0));
+            print((int*) " / ");
+            print(itoa((int)currentValue, string_buffer, 10, 0, 0));
+            print((int*) " = ");
+            previousValue = previousValue / currentValue;
+            print(itoa((int)previousValue, string_buffer, 10, 0, 0));
+            println();
+            codeGenerated = 0;
+          } else {
+            if (isPreviousConstant) {
+              load_integer(previousValue);
+              //print((int*) "loaded ");
+              //print(itoa((int)previousValue, string_buffer, 10, 0, 0));
+              //println();
+              emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), 0, FCT_DIVU);
+              emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+              codeGenerated = 1;
+              isPreviousConstant = 0;
+            } else {
+              if (isCurrentConstant) {
+                load_integer(currentValue);
+                //print((int*) "loaded ");
+                //print(itoa((int)currentValue, string_buffer, 10, 0, 0));
+                //println();
+              }
+              emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
+              emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+              codeGenerated = 1;
+            }
+          }
         } else if (operatorSymbol == SYM_MOD) {
-            emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
-            emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFHI);
+          if (toFold) {
+            print(itoa((int)previousValue, string_buffer, 10, 0, 0));
+            print((int*) " % ");
+            print(itoa((int)currentValue, string_buffer, 10, 0, 0));
+            print((int*) " = ");
+            previousValue = previousValue % currentValue;
+            print(itoa((int)previousValue, string_buffer, 10, 0, 0));
+            println();
+            codeGenerated = 0;
+          } else {
+            if (isPreviousConstant) {
+              load_integer(previousValue);
+              //print((int*) "loaded ");
+              //print(itoa((int)previousValue, string_buffer, 10, 0, 0));
+              //println();
+              emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), 0, FCT_DIVU);
+              emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFHI);
+              codeGenerated = 1;
+              isPreviousConstant = 0;
+            } else {
+              if (isCurrentConstant) {
+                load_integer(currentValue);
+              //  print((int*) "loaded ");
+              //  print(itoa((int)currentValue, string_buffer, 10, 0, 0));
+              //  println();
+              }
+              emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
+              emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFHI);
+              codeGenerated = 1;
+            }
+          }
         }
-        tfree(1);
+        if (codeGenerated)
+          tfree(1);
+        //  print((int*) "freed ");
+        //  println();
     }
+
+    if (codeGenerated == 0) {
+      if (isPreviousConstant) {
+        //load_integer(previousValue);
+        *(constant) = 1;
+        *(constant + 1) = previousValue;
+        //print((int*) "loaded ");
+        //print(itoa((int)previousValue, string_buffer, 10, 0, 0));
+        //println();
+      }
+    } else {
+      *(constant) = 0;
+      *(constant + 1) = 0;
+    }
+
+    //println();
 
     // assert: allocatedTemporaries == n + 1
 
@@ -2751,6 +2874,12 @@ int gr_simpleExpression() {
     int operatorSymbol;
     int rtype;
 
+    int* constant;
+
+    int isCurrentConstant;
+    int currentValue;
+
+    constant = malloc(2 * SIZEOFINTSTAR);
     // assert: n = allocatedTemporaries
 
     // optional: -
@@ -2774,8 +2903,10 @@ int gr_simpleExpression() {
     } else
         sign = 0;
 
-    ltype = gr_term();
-
+    ltype = gr_term(constant);
+    if (*(constant) == 1){
+      load_integer(*(constant + 1));
+    }
     // assert: allocatedTemporaries == n + 1
 
     if (sign) {
@@ -2794,8 +2925,10 @@ int gr_simpleExpression() {
 
         getSymbol();
 
-        rtype = gr_term();
-
+        rtype = gr_term(constant);
+        if (*(constant) == 1){
+          load_integer(*(constant + 1));
+        }
         // assert: allocatedTemporaries == n + 2
 
         if (operatorSymbol == SYM_PLUS) {
@@ -6680,9 +6813,8 @@ int selfie(int argc, int* argv) {
 int main(int argc, int *argv) {
 
     int x;
-    int* test = malloc(2 * SIZEOFINTSTAR);
-    *test = 10;
-    *(test + 1) = 20;
+    int y;
+    int z;
 
     initLibrary();
 
@@ -6702,9 +6834,69 @@ int main(int argc, int *argv) {
 
     print((int*)"This is knights Selfie");
     println();
-    print(itoa(x, string_buffer, 10, 0, 0));
-    println();
+    //x = 2;
+    //y = 9;
+    //x = y % x;
 
+       print((int*) "Testing constant folding for gr_term now: ");
+       println();
+
+
+       x = 2 * 3;
+       print((int*) "x = 2 * 3 : ");
+       print(itoa(x, string_buffer, 10, 0, 0));
+       println();
+
+       z = 4;
+       x = 2 * 3 * z;
+       print((int*) "z = 4 ");
+       println();
+       print((int*) "x = 2 * 3 * z: ");
+       print(itoa(x, string_buffer, 10, 0, 0));
+       println();
+
+       x = 3;
+       print((int*) "x = 3: ");
+       print(itoa(x, string_buffer, 10, 0, 0));
+       println();
+
+
+       x = 2 * x * x;
+       print((int*) "x = 2 * x * x: ");
+       print(itoa(x, string_buffer, 10, 0, 0));
+       println();
+
+
+       x = 3;
+       print((int*) "x = 3: ");
+       print(itoa(x, string_buffer, 10, 0, 0));
+       println();
+
+       x = 5 * x * z;
+       print((int*) "x = 5 * x * z: ");
+       print(itoa(x, string_buffer, 10, 0, 0));
+       println();
+
+       y = x * 2;
+       print((int*) "y = x * 2 ");
+       print(itoa(y, string_buffer, 10, 0, 0));
+       println();
+
+        x = x / 2 * 3 % 5;
+        print((int*) "x = x / 2 * 3 % 5 ");
+        print(itoa(x, string_buffer, 10, 0, 0));
+        println();
+
+        x = 3;
+          print((int*) "x = 3: ");
+          print(itoa(x, string_buffer, 10, 0, 0));
+          println();
+
+
+
+
+    //print(itoa(x, string_buffer, 10, 0, 0));
+    //println();
     if (selfie(argc, (int*) argv) != 0) {
         print(selfieName);
         print((int*) ": usage: selfie { -c source | -o binary | -s assembly | -l binary } [ -m size ... | -d size ... | -y size ... ] ");
