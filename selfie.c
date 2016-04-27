@@ -494,7 +494,7 @@ void help_procedure_epilogue(int parameters);
 int  gr_call(int* procedure);
 int  gr_factor(int* constant);
 int  gr_term(int* constant);
-int  gr_simpleExpression(int *constant);
+int  gr_simpleExpression(int* constant);
 int  gr_shiftExpression(int* constant);
 int  gr_expression();
 void gr_while();
@@ -2984,7 +2984,7 @@ int gr_simpleExpression(int* constant) {
     if (isPreviousConstant == 0) {
       emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
     } else {
-      previousValue = 0 - previousValue;
+      previousValue = - previousValue;
     }
   }
 
@@ -3002,66 +3002,42 @@ int gr_simpleExpression(int* constant) {
     isCurrentConstant = *constant;
     currentValue = *(constant + 1);
 
-    if (isPreviousConstant)
-      if (isCurrentConstant)
+    if (isPreviousConstant == 1)
+      if (isCurrentConstant == 1)
         toFold = 1;
 
     // assert: allocatedTemporaries == n + 2
-
     if (operatorSymbol == SYM_PLUS) {
-      if (ltype == INTSTAR_T) {
-        if (rtype == INT_T) {
-          // pointer arithmetic: factor of 2^2 of integer operand
-          if (toFold) {
-            print((int*) "*(");
-            print(itoa((int)previousValue, string_buffer, 10, 0, 0));
-            print((int*) " + ");
-            print(itoa((int)currentValue, string_buffer, 10, 0, 0));
-            print((int*) ")");
-            print((int*) " = ");
-            previousValue = previousValue + currentValue * SIZEOFINTSTAR;
-            print(itoa((int)previousValue, string_buffer, 10, 0, 0));
-            println();
-            codeGenerated = 0;
-          } else if (isPreviousConstant) {
-            emitLeftShiftBy(2);
-            load_integer(previousValue);
-          } else if (isCurrentConstant) {
-            currentValue = currentValue * SIZEOFINTSTAR;
-            load_integer(currentValue);
-            isCurrentConstant = 0;
-          } else {
-            emitLeftShiftBy(2);
-          }
-        } else if (rtype == INTSTAR_T)
-          typeWarning(ltype, rtype);
+      if (toFold == 1) {
+        print(itoa((int)previousValue, string_buffer, 10, 0, 0));
+        print((int*) " + ");
+        print(itoa((int)currentValue, string_buffer, 10, 0, 0));
+        print((int*) " = ");
+        previousValue = previousValue + currentValue;
+        print(itoa((int)previousValue, string_buffer, 10, 0, 0));
+        println();
+        //print((int*) "1 scheiss compiler verfickte kacke!!!");
+        codeGenerated = 0;
       } else {
-        if (toFold) {
-          print(itoa((int)previousValue, string_buffer, 10, 0, 0));
-          print((int*) " + ");
-          print(itoa((int)currentValue, string_buffer, 10, 0, 0));
-          print((int*) " = ");
-          previousValue = previousValue + currentValue;
-          print(itoa((int)previousValue, string_buffer, 10, 0, 0));
-          println();
-          codeGenerated = 0;
-        } else if (isPreviousConstant) {
+        if (isPreviousConstant) {
           load_integer(previousValue);
         } else if (isCurrentConstant) {
           load_integer(currentValue);
           isCurrentConstant = 0;
         }
-      }
-      if (toFold == 0) {
+        if (ltype == INTSTAR_T) {
+          if (rtype == INT_T)
+            // pointer arithmetic: factor of 2^2 of integer operand
+            emitLeftShiftBy(2);
+        } else if (rtype == INTSTAR_T)
+          typeWarning(ltype, rtype);
+
         emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
         isPreviousConstant = 0;
         codeGenerated = 1;
       }
     } else if (operatorSymbol == SYM_MINUS) {
-      if (ltype != rtype)
-        typeWarning(ltype, rtype);
-
-      if (toFold) {
+      if (toFold == 1) {
         print(itoa((int)previousValue, string_buffer, 10, 0, 0));
         print((int*) " - ");
         print(itoa((int)currentValue, string_buffer, 10, 0, 0));
@@ -3070,22 +3046,29 @@ int gr_simpleExpression(int* constant) {
         print(itoa((int)previousValue, string_buffer, 10, 0, 0));
         println();
         codeGenerated = 0;
-      } else if (isPreviousConstant) {
-        load_integer(previousValue);
-      } else if (isCurrentConstant) {
-        load_integer(currentValue);
-        isCurrentConstant = 0;
-      }
-      if (toFold == 0) {
+      } else {
         if (isPreviousConstant) {
-          emitRFormat(OP_SPECIAL, previousTemporary(), previousTemporary(), currentTemporary(), FCT_SUBU);
+          load_integer(previousValue);
+        } else if (isCurrentConstant) {
+          load_integer(currentValue);
+          isCurrentConstant = 0;
+        }
+        if (isPreviousConstant) {
+          if (ltype != rtype)
+            typeWarning(ltype, rtype);
+// x = x - 1;     x = 1 - x;
+          emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SUBU);
           isPreviousConstant = 0;
         } else {
+          if (ltype != rtype)
+            typeWarning(ltype, rtype);
+
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
         }
         codeGenerated = 1;
       }
     }
+
     if (codeGenerated)
       tfree(1);
   }
@@ -3241,10 +3224,10 @@ int gr_expression() {
 
   ltype = gr_shiftExpression(constant);
 
-  if (*constant) {
+  if (*(constant)) {
     if (*(constant + 1) < 0) {
       *(constant + 1) = 0 - *(constant + 1);
-      load_integer((*constant + 1));
+      load_integer(*(constant + 1));
       emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
     } else {
       load_integer(*(constant + 1));
@@ -3263,10 +3246,10 @@ int gr_expression() {
 
     rtype = gr_shiftExpression(constant);
 
-    if (*constant) {
+    if (*(constant)) {
       if (*(constant + 1) < 0) {
-        *(constant + 1) = 0 - *(constant + 1);
-        load_integer((*constant + 1));
+        *(constant + 1) = - *(constant + 1);
+        load_integer(*(constant + 1));
         emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
       } else {
         load_integer(*(constant + 1));
