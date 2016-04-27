@@ -2762,10 +2762,7 @@ int gr_factor(int* constant) {
 int gr_term(int* constant) {
   int ltype;
   int operatorSymbol;
-  //int previousOperator;
   int rtype;
-  //int currentOperator;
-  int isConstant;
 
   int isPreviousConstant;
   int previousValue;
@@ -2785,11 +2782,6 @@ int gr_term(int* constant) {
   isPreviousConstant = *constant;
   previousValue = *(constant + 1);
 
-  isConstant = *constant;
-  //previousValue = *(constant + 1);
-
-  //  if (isConstant == 0)
-  //    previousSymbol = symbol;
   // assert: allocatedTemporaries == n + 1
 
   // * / or % ?
@@ -2987,10 +2979,6 @@ int gr_simpleExpression() {
   isPreviousConstant = *constant;
   previousValue = *(constant + 1);
 
-  if (isPreviousConstant) {
-    load_integer(previousValue);
-  }
-
   // assert: allocatedTemporaries == n + 1
 
   if (sign) {
@@ -2999,8 +2987,11 @@ int gr_simpleExpression() {
 
       ltype = INT_T;
     }
-
-    emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
+    if (isPreviousConstant == 0) {
+      emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
+    } else {
+      previousValue = 0 - previousValue;
+    }
   }
 
   // + or -?
@@ -3017,29 +3008,105 @@ int gr_simpleExpression() {
     isCurrentConstant = *constant;
     currentValue = *(constant + 1);
 
-    if (isCurrentConstant) {
-      load_integer(currentValue);
-    }
+    if (isPreviousConstant)
+      if (isCurrentConstant)
+        toFold = 1;
+
     // assert: allocatedTemporaries == n + 2
 
     if (operatorSymbol == SYM_PLUS) {
       if (ltype == INTSTAR_T) {
-        if (rtype == INT_T)
+        if (rtype == INT_T) {
           // pointer arithmetic: factor of 2^2 of integer operand
-          emitLeftShiftBy(2);
-      } else if (rtype == INTSTAR_T)
-        typeWarning(ltype, rtype);
-
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
-
+          if (toFold) {
+            print((int*) "*(");
+            print(itoa((int)previousValue, string_buffer, 10, 0, 0));
+            print((int*) " + ");
+            print(itoa((int)currentValue, string_buffer, 10, 0, 0));
+            print((int*) ")");
+            print((int*) " = ");
+            previousValue = previousValue + currentValue * SIZEOFINTSTAR;
+            print(itoa((int)previousValue, string_buffer, 10, 0, 0));
+            println();
+            codeGenerated = 0;
+          } else if (isPreviousConstant) {
+            emitLeftShiftBy(2);
+            load_integer(previousValue);
+            isPreviousConstant = 0;
+          } else if (isCurrentConstant) {
+            currentValue = currentValue * SIZEOFINTSTAR;
+            load_integer(currentValue);
+            isCurrentConstant = 0;
+          } else {
+            emitLeftShiftBy(2);
+          }
+        } else if (rtype == INTSTAR_T)
+          typeWarning(ltype, rtype);
+      } else {
+        if (toFold) {
+          print(itoa((int)previousValue, string_buffer, 10, 0, 0));
+          print((int*) " + ");
+          print(itoa((int)currentValue, string_buffer, 10, 0, 0));
+          print((int*) " = ");
+          previousValue = previousValue + currentValue;
+          print(itoa((int)previousValue, string_buffer, 10, 0, 0));
+          println();
+          codeGenerated = 0;
+        } else if (isPreviousConstant) {
+          load_integer(previousValue);
+          isPreviousConstant = 0;
+        } else if (isCurrentConstant) {
+          load_integer(currentValue);
+          isCurrentConstant = 0;
+        }
+      }
+      if (toFold == 0) {
+        emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
+        codeGenerated = 1;
+      }
     } else if (operatorSymbol == SYM_MINUS) {
       if (ltype != rtype)
         typeWarning(ltype, rtype);
 
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
+      if (toFold) {
+        print(itoa((int)previousValue, string_buffer, 10, 0, 0));
+        print((int*) " - ");
+        print(itoa((int)currentValue, string_buffer, 10, 0, 0));
+        print((int*) " = ");
+        previousValue = previousValue - currentValue;
+        print(itoa((int)previousValue, string_buffer, 10, 0, 0));
+        println();
+        codeGenerated = 0;
+      } else if (isPreviousConstant) {
+        load_integer(previousValue);
+        isPreviousConstant = 0;
+      } else if (isCurrentConstant) {
+        load_integer(currentValue);
+        isCurrentConstant = 0;
+      }
+      if (toFold == 0) {
+        if (isPreviousConstant) {
+          emitRFormat(OP_SPECIAL, previousTemporary(), previousTemporary(), currentTemporary(), FCT_SUBU);
+        } else {
+          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
+        }
+        codeGenerated = 1;
+      }
     }
+    if (codeGenerated)
+      tfree(1);
+  }
 
-    tfree(1);
+  if (codeGenerated == 0) {
+    if (isPreviousConstant) {
+      if (previousValue < 0) {
+        previousValue = 0 - previousValue;
+        load_integer(previousValue);
+        emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
+      } else {
+        load_integer(previousValue);
+      }
+    }
   }
 
   // assert: allocatedTemporaries == n + 1
@@ -6918,8 +6985,6 @@ int main(int argc, int* argv) {
   argc = argc - 1;
   argv = argv + 1;
 
-  x = 1 + 2;
-
   print((int*)"This is knights Selfie");
   println();
   //x = 2;
@@ -6986,8 +7051,8 @@ int main(int argc, int* argv) {
   println();
 
 
-  x = 2 + 3;
-  print((int*) "x = 2 + 3 : ");
+  x = 2 - 3;
+  print((int*) "x = 2 - 3 : ");
   print(itoa(x, string_buffer, 10, 0, 0));
   println();
 
@@ -7006,14 +7071,8 @@ int main(int argc, int* argv) {
   println();
 
 
-  x = 2 + x + x;
-  print((int*) "x = 2 + x + x : ");
-  print(itoa(x, string_buffer, 10, 0, 0));
-  println();
-
-
-  x = 3;
-  print((int*) "x = 3 : ");
+  x = -2 - 3;
+  print((int*) "x = -2 - 3 : ");
   print(itoa(x, string_buffer, 10, 0, 0));
   println();
 
