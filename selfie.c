@@ -2950,6 +2950,10 @@ int gr_simpleExpression() {
   int previousValue;
   int isCurrentConstant;
   int currentValue;
+  int toFold;
+  int codeGenerated;
+
+  codeGenerated = 0;
 
   //int isCurrentConstant;
   //int currentValue;
@@ -2983,8 +2987,9 @@ int gr_simpleExpression() {
   isPreviousConstant = *constant;
   previousValue = *(constant + 1);
 
-  if (isPreviousConstant)
+  if (isPreviousConstant) {
     load_integer(previousValue);
+  }
 
   // assert: allocatedTemporaries == n + 1
 
@@ -3002,11 +3007,18 @@ int gr_simpleExpression() {
   while (isPlusOrMinus()) {
     operatorSymbol = symbol;
 
+    toFold = 0;
+    *constant = 0;
+
     getSymbol();
 
     rtype = gr_term(constant);
-    if (*(constant) == 1) {
-      load_integer(*(constant + 1));
+
+    isCurrentConstant = *constant;
+    currentValue = *(constant + 1);
+
+    if (isCurrentConstant) {
+      load_integer(currentValue);
     }
     // assert: allocatedTemporaries == n + 2
 
@@ -6969,6 +6981,61 @@ int main(int argc, int* argv) {
   print(itoa(x, string_buffer, 10, 0, 0));
   println();
 
+
+  print((int*) "Testing constant folding for gr_simpleExpression now: ");
+  println();
+
+
+  x = 2 + 3;
+  print((int*) "x = 2 + 3 : ");
+  print(itoa(x, string_buffer, 10, 0, 0));
+  println();
+
+  z = 4;
+  x = 2 + 3 + z;
+  print((int*) "z = 4 : ");
+  print(itoa(z, string_buffer, 10, 0, 0));
+  println();
+  print((int*) "x = 2 + 3 + z : ");
+  print(itoa(x, string_buffer, 10, 0, 0));
+  println();
+
+  x = 3;
+  print((int*) "x = 3 : ");
+  print(itoa(x, string_buffer, 10, 0, 0));
+  println();
+
+
+  x = 2 + x + x;
+  print((int*) "x = 2 + x + x : ");
+  print(itoa(x, string_buffer, 10, 0, 0));
+  println();
+
+
+  x = 3;
+  print((int*) "x = 3 : ");
+  print(itoa(x, string_buffer, 10, 0, 0));
+  println();
+
+  x = 5 + x + z;
+  print((int*) "x = 5 + x + z : ");
+  print(itoa(x, string_buffer, 10, 0, 0));
+  println();
+
+  y = x + 2;
+  print((int*) "y = x + 2 : ");
+  print(itoa(y, string_buffer, 10, 0, 0));
+  println();
+
+  x = x - 2 + 3 - 5;
+  print((int*) "x = x - 2 + 3 - 5 : ");
+  print(itoa(x, string_buffer, 10, 0, 0));
+  println();
+
+  x = 3;
+  print((int*) "x = 3 : ");
+  print(itoa(x, string_buffer, 10, 0, 0));
+  println();
 
 
 
