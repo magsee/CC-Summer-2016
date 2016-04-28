@@ -3016,7 +3016,6 @@ int gr_simpleExpression(int* constant) {
         previousValue = previousValue + currentValue;
         print(itoa((int)previousValue, string_buffer, 10, 0, 0));
         println();
-        //print((int*) "1 scheiss compiler verfickte kacke!!!");
         codeGenerated = 0;
       } else {
         if (isPreviousConstant) {
@@ -7171,10 +7170,6 @@ int main(int argc, int* argv) {
   print(itoa(y, string_buffer, 10, 0, 0));
   println();
 
-  x = x - 2 + 3 - 5;
-  print((int*) "x = x - 2 + 3 - 5 : ");
-  print(itoa(x, string_buffer, 10, 0, 0));
-  println();
 
   x = 3;
   print((int*) "x = 3 : ");
@@ -7185,6 +7180,22 @@ int main(int argc, int* argv) {
   print((int*) "x = 3 + 4 * 5 : ");
   print(itoa(x, string_buffer, 10, 0, 0));
   println();
+
+  println();
+  println();
+  println();
+  x = 3;
+  print((int*) "x = 3 : ");
+  print(itoa(x, string_buffer, 10, 0, 0));
+  println();
+
+  x = x - 2 + 3 - 5;
+  print((int*) "x = x - 2 + 3 - 5 : ");
+  print(itoa(x, string_buffer, 10, 0, 0));
+  println();
+  println();
+  println();
+
 
 
   print((int*) "Testing constant folding for gr_shiftExpression now: ");
