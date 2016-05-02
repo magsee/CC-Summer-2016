@@ -140,6 +140,8 @@ int CHAR_EXCLAMATION  = '!';
 int CHAR_PERCENTAGE   = '%';
 int CHAR_SINGLEQUOTE  = 39; // ASCII code 39 = '
 int CHAR_DOUBLEQUOTE  = '"';
+int CHAR_LBRACKET     = '[';
+int CHAR_RBRACKET     = ']';
 
 int SIZEOFINT     = 4; // must be the same as WORDSIZE
 int SIZEOFINTSTAR = 4; // must be the same as WORDSIZE
@@ -277,6 +279,8 @@ int SYM_CHARACTER    = 26; // character
 int SYM_STRING       = 27; // string
 int SYM_LSHIFT       = 28; // <<
 int SYM_RSHIFT       = 29; // >>
+int SYM_LBRACKET     = 30; // [
+int SYM_RBRACKET     = 31; // ]
 
 int* SYMBOLS; // array of strings representing symbols
 
@@ -308,7 +312,7 @@ int sourceFD    = 0;        // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void initScanner() {
-  SYMBOLS = malloc(30 * SIZEOFINTSTAR);
+  SYMBOLS = malloc(32 * SIZEOFINTSTAR);
 
   *(SYMBOLS + SYM_IDENTIFIER)   = (int) "identifier";
   *(SYMBOLS + SYM_INTEGER)      = (int) "integer";
@@ -340,6 +344,8 @@ void initScanner() {
   *(SYMBOLS + SYM_STRING)       = (int) "string";
   *(SYMBOLS + SYM_LSHIFT)       = (int) "<<";
   *(SYMBOLS + SYM_RSHIFT)       = (int) ">>";
+  *(SYMBOLS + SYM_LBRACKET)     = (int) "[";
+  *(SYMBOLS + SYM_RBRACKET)     = (int) "]";
 
   character = CHAR_EOF;
   symbol    = SYM_EOF;
