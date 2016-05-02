@@ -133,6 +133,8 @@ int CHAR_LPARENTHESIS = '(';
 int CHAR_RPARENTHESIS = ')';
 int CHAR_LBRACE       = '{';
 int CHAR_RBRACE       = '}';
+int CHAR_LBRACKET     = '[';
+int CHAR_RBRACKET     = ']';
 int CHAR_COMMA        = ',';
 int CHAR_LT           = '<';
 int CHAR_GT           = '>';
@@ -6986,6 +6988,7 @@ int selfie(int argc, int* argv) {
 
 int main(int argc, int* argv) {
 
+  // int x[10];
 //  int x;
 
   initLibrary();
@@ -7007,6 +7010,16 @@ int main(int argc, int* argv) {
 
   //print(itoa(x, string_buffer, 10, 0, 0));
   //println();
+
+//  x[0] = 1;
+//  x[1] = 2;
+
+  // print((int*)"x[0] = ");
+  // print(itoa(x[0], string_buffer, 10, 0, 0));
+  // println();
+  // print((int*)"x[1] = ")
+  // print(itoa(x[1], string_buffer, 10, 0, 0));
+  // println();
 
   if (selfie(argc, (int*) argv) != 0) {
     print(selfieName);
