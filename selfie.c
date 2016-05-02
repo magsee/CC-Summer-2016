@@ -142,8 +142,6 @@ int CHAR_EXCLAMATION  = '!';
 int CHAR_PERCENTAGE   = '%';
 int CHAR_SINGLEQUOTE  = 39; // ASCII code 39 = '
 int CHAR_DOUBLEQUOTE  = '"';
-int CHAR_LBRACKET     = '[';
-int CHAR_RBRACKET     = ']';
 
 int SIZEOFINT     = 4; // must be the same as WORDSIZE
 int SIZEOFINTSTAR = 4; // must be the same as WORDSIZE
@@ -505,6 +503,7 @@ int  gr_term(int* constant);
 int  gr_simpleExpression(int* constant);
 int  gr_shiftExpression(int* constant);
 int  gr_expression();
+int  gr_index(int* variableOrProcedureName);
 void gr_while();
 void gr_if();
 void gr_return(int returnType);
@@ -1963,6 +1962,16 @@ int getSymbol() {
 
     symbol = SYM_RBRACE;
 
+  } else if (character == CHAR_LBRACKET) {
+    getCharacter();
+
+    symbol = SYM_LBRACKET;
+
+  } else if (character == CHAR_RBRACKET) {
+    getCharacter();
+
+    symbol = SYM_RBRACKET;
+
   } else if (character == CHAR_COMMA) {
     getCharacter();
 
@@ -2711,10 +2720,19 @@ int gr_factor(int* constant) {
 
       // reset return register
       emitIFormat(OP_ADDIU, REG_ZR, REG_V0, 0);
-    } else
+
+    } else if (symbol == SYM_LBRACKET) {
+      // array access
+
+      getSymbol();
+
+      type = gr_index(variableOrProcedureName);
+
+    } else {
       // variable access: identifier
       type = load_variable(variableOrProcedureName);
 
+    }
     // integer?
   } else if (symbol == SYM_INTEGER) {
 
@@ -3258,6 +3276,11 @@ int gr_expression() {
   // assert: allocatedTemporaries == n + 1
 
   return ltype;
+}
+
+int gr_index(int* variableOrProcedureName) {
+
+  return 0;
 }
 
 void gr_while() {
