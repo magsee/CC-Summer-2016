@@ -3280,7 +3280,33 @@ int gr_expression() {
 
 int gr_index(int* variableOrProcedureName) {
 
-  return 0;
+  int index;
+  int* array;
+  int arrayAddress;
+
+  index = gr_expression();
+
+  if (index == INT_T) {
+
+    if (symbol == SYM_RBRACKET) {
+
+      array = getVariable(variableOrProcedureName);
+
+      arrayAddress = getAddress(array);
+
+      load_integer(SIZEOFINT);
+      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
+      emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+      emitIFormat(OP_LW, getScope(array), currentTemporary(), arrayAddress);
+      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
+      tfree(1);
+      emitIFormat(OP_LW, currentTemporary(), currentTemporary(), 0);
+
+      getSymbol();
+    }
+  }
+
+  return index;
 }
 
 void gr_while() {
@@ -7012,7 +7038,7 @@ int selfie(int argc, int* argv) {
 int main(int argc, int* argv) {
 
   // int x[10];
-//  int x;
+  int* x;
 
   initLibrary();
 
@@ -7031,15 +7057,22 @@ int main(int argc, int* argv) {
   print((int*)"This is knights Selfie");
   println();
 
+  x = malloc(4 * SIZEOFINTSTAR);
+
   //print(itoa(x, string_buffer, 10, 0, 0));
   //println();
 
 //  x[0] = 1;
 //  x[1] = 2;
 
-  // print((int*)"x[0] = ");
-  // print(itoa(x[0], string_buffer, 10, 0, 0));
-  // println();
+  *x = 45;
+  *(x + 1) = 78;
+  *(x + 2) = 32;
+  *(x + 3) = 12;
+
+  print((int*)"x[1] = ");
+  print(itoa(x[1], string_buffer, 10, 0, 0));
+  println();
   // print((int*)"x[1] = ")
   // print(itoa(x[1], string_buffer, 10, 0, 0));
   // println();
