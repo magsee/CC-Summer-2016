@@ -3754,7 +3754,7 @@ void gr_variable(int offset) {
         type = INT_A;
       }
 
-      gr_factor(constant);
+      gr_shiftExpression(constant);
 
       if (*constant) {
         size = *(constant + 1);
@@ -7143,7 +7143,7 @@ int selfie(int argc, int* argv) {
 int main(int argc, int* argv) {
 
   // int x[10];
-  int x[4];
+  int x[1 + 3];
   int y;
 
   initLibrary();
@@ -7171,7 +7171,7 @@ int main(int argc, int* argv) {
   x[0] = 12;
   x[1] = 67;
   x[2] = 34;
-  x[3] = x[0] + x[1];
+  x[1 + 2 ] = x[0] + x[1];
 
   //*x = 45;
   //*(x + 1) = 78;
