@@ -2381,6 +2381,8 @@ int* putType(int type) {
     return (int*) "int";
   else if (type == INTSTAR_T)
     return (int*) "int*";
+  else if (type == INT_A)
+    return (int*) "int_a";
   else if (type == VOID_T)
     return (int*) "void";
   else
@@ -2739,6 +2741,8 @@ int gr_factor(int* constant) {
       getSymbol();
 
       type = gr_index(variableOrProcedureName);
+
+      emitIFormat(OP_LW, currentTemporary(), currentTemporary(), 0);
 
     } else {
       // variable access: identifier
@@ -3312,7 +3316,6 @@ int gr_index(int* variableOrProcedureName) {
       emitIFormat(OP_LW, getScope(array), currentTemporary(), arrayAddress);
       emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
       tfree(1);
-      emitIFormat(OP_LW, currentTemporary(), currentTemporary(), 0);
 
       getSymbol();
     } else {
@@ -3520,6 +3523,9 @@ void gr_statement() {
   int rtype;
   int* variableOrProcedureName;
   int* entry;
+  int isArray;
+
+  isArray = 0;
 
   // assert: allocatedTemporaries == 0;
 
@@ -3627,8 +3633,7 @@ void gr_statement() {
 
       ltype = gr_index(variableOrProcedureName);
 
-      print(itoa(symbol, string_buffer, 10, 0, 0));
-      println();
+      isArray = 1;
 
     }
 
@@ -3648,9 +3653,14 @@ void gr_statement() {
 
       // identifier = expression
     } else if (symbol == SYM_ASSIGN) {
+
       entry = getVariable(variableOrProcedureName);
 
-      ltype = getType(entry);
+      if(isArray == 0) {
+
+        ltype = getType(entry);
+
+      }
 
       getSymbol();
 
@@ -3659,9 +3669,15 @@ void gr_statement() {
       if (ltype != rtype)
         typeWarning(ltype, rtype);
 
-        if ()
+      if (isArray) {
 
-      emitIFormat(OP_SW, getScope(entry), currentTemporary(), getAddress(entry));
+        emitIFormat(OP_SW, previousTemporary(), currentTemporary(), 0);
+
+      } else {
+
+        emitIFormat(OP_SW, getScope(entry), currentTemporary(), getAddress(entry));
+
+      }
 
       tfree(1);
 
@@ -3939,6 +3955,11 @@ void gr_procedure(int* procedure, int returnType) {
       localVariables = localVariables + 1;
 
       gr_variable(-localVariables * WORDSIZE);
+
+      entry = getSymbolTableEntry(identifier, VARIABLE);
+
+      if (getType(entry) == INT_A)
+       localVariables = localVariables + getSize(entry) - 1;
 
       if (symbol == SYM_SEMICOLON)
         getSymbol();
@@ -7149,14 +7170,16 @@ int main(int argc, int* argv) {
 
   x[0] = 12;
   x[1] = 67;
+  x[2] = 34;
+  x[3] = x[0] + x[1];
 
   //*x = 45;
   //*(x + 1) = 78;
   //*(x + 2) = 32;
   //*(x + 3) = 12;
 
-  print((int*)"x[1] = ");
-  print(itoa(x[1], string_buffer, 10, 0, 0));
+  print((int*)"x[3] = ");
+  print(itoa(x[3], string_buffer, 10, 0, 0));
   println();
   // print((int*)"x[1] = ")
   // print(itoa(x[1], string_buffer, 10, 0, 0));
