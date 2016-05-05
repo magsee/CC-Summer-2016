@@ -3738,6 +3738,8 @@ void gr_variable(int offset) {
 
   constant = malloc(2 * SIZEOFINTSTAR);
 
+  *constant = 0;
+
   type = gr_type();
 
   if (symbol == SYM_IDENTIFIER) {
@@ -3771,7 +3773,8 @@ void gr_variable(int offset) {
       }
     }
 
-    offset = offset - size * SIZEOFINT;
+    if (size != 0)
+      offset = offset - roundUp(size, SIZEOFINT);
 
     //print(itoa(offset, string_buffer, 10, 0, 0));
     //println();
@@ -4000,6 +4003,14 @@ void gr_procedure(int* procedure, int returnType) {
 void gr_cstar() {
   int type;
   int* variableOrProcedureName;
+  int isArray;
+  int size;
+  int* constant;
+
+  size = 0;
+  isArray = 0;
+  constant = malloc(2 * SIZEOFINTSTAR);
+  *constant = 0;
 
   while (symbol != SYM_EOF) {
     while (lookForType()) {
@@ -4033,15 +4044,44 @@ void gr_cstar() {
 
         getSymbol();
 
+        if (symbol == SYM_LBRACKET) {
+
+          getSymbol();
+
+          type = gr_shiftExpression(constant);
+
+          isArray = 1;
+
+          if (*constant) {
+            size = *(constant + 1);
+          } else {
+            syntaxErrorUnexpected();
+          }
+
+          print(itoa(*(constant + 1), string_buffer, 10, 0, 0));
+          println();
+
+          if (symbol == SYM_RBRACKET) {
+
+            getSymbol();
+
+          } else {
+            syntaxErrorSymbol(SYM_RBRACKET);
+          }
+        }
+
         // type identifier "(" procedure declaration or definition
         if (symbol == SYM_LPARENTHESIS)
           gr_procedure(variableOrProcedureName, type);
         else {
-          allocatedMemory = allocatedMemory + WORDSIZE;
+          if(size != 0)
+            allocatedMemory = allocatedMemory + roundUp(size, WORDSIZE);
+          else
+            allocatedMemory = allocatedMemory + WORDSIZE;
 
           // type identifier ";" global variable declaration
           if (symbol == SYM_SEMICOLON) {
-            createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, type, 0, -allocatedMemory, 0);
+            createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, type, 0, -allocatedMemory, size);
 
             getSymbol();
 
@@ -7140,6 +7180,8 @@ int selfie(int argc, int* argv) {
   return 0;
 }
 
+int z[4];
+
 int main(int argc, int* argv) {
 
   // int x[10];
@@ -7173,17 +7215,20 @@ int main(int argc, int* argv) {
   x[2] = 34;
   x[1 + 2 ] = x[0] + x[1];
 
+  z[3] = 56;
+  x[3] = 44;
+
   //*x = 45;
   //*(x + 1) = 78;
   //*(x + 2) = 32;
   //*(x + 3) = 12;
 
+  print((int*)"z[3] = ");
+  print(itoa(z[3], string_buffer, 10, 0, 0));
+  println();
   print((int*)"x[3] = ");
   print(itoa(x[3], string_buffer, 10, 0, 0));
   println();
-  // print((int*)"x[1] = ")
-  // print(itoa(x[1], string_buffer, 10, 0, 0));
-  // println();
 
   if (selfie(argc, (int*) argv) != 0) {
     print(selfieName);
