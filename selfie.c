@@ -3313,8 +3313,9 @@ int gr_index(int* variableOrProcedureName) {
       load_integer(SIZEOFINT);
       emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
       emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
-      emitIFormat(OP_LW, getScope(array), currentTemporary(), arrayAddress);
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
+      emitIFormat(OP_ADDIU, REG_ZR, nextTemporary(), arrayAddress);
+      emitRFormat(OP_SPECIAL, nextTemporary(), previousTemporary(), previousTemporary(), FCT_SUBU);
+      emitRFormat(OP_SPECIAL, getScope(array), previousTemporary(), previousTemporary(), FCT_ADDU);
       tfree(1);
 
       getSymbol();
@@ -3672,6 +3673,7 @@ void gr_statement() {
       if (isArray) {
 
         emitIFormat(OP_SW, previousTemporary(), currentTemporary(), 0);
+        tfree(1);
 
       } else {
 
@@ -3774,7 +3776,7 @@ void gr_variable(int offset) {
     }
 
     if (size != 0)
-      offset = offset - roundUp(size, SIZEOFINT);
+      offset = offset - roundUp(size + 1, SIZEOFINT);
 
     //print(itoa(offset, string_buffer, 10, 0, 0));
     //println();
@@ -7180,12 +7182,14 @@ int selfie(int argc, int* argv) {
   return 0;
 }
 
-int z[4];
+//int z[10];
+int f;
 
 int main(int argc, int* argv) {
 
   // int x[10];
-  int x[1 + 3];
+  int z[10];
+  int x[10];
   int y;
 
   initLibrary();
@@ -7210,24 +7214,34 @@ int main(int argc, int* argv) {
   //print(itoa(x, string_buffer, 10, 0, 0));
   //println();
 
-  x[0] = 12;
-  x[1] = 67;
-  x[2] = 34;
-  x[1 + 2 ] = x[0] + x[1];
+  //x[0] = 12;
+  //x[1] = 67;
+  //x[2] = 34;
+  //x[1 + 2 ] = x[0] + x[1];
 
-  z[3] = 56;
-  x[3] = 44;
+  z[5] = 56;
+  x[5] = 42;
+
+  //f = z[5];
+  y = x[5];
 
   //*x = 45;
   //*(x + 1) = 78;
   //*(x + 2) = 32;
   //*(x + 3) = 12;
 
-  print((int*)"z[3] = ");
-  print(itoa(z[3], string_buffer, 10, 0, 0));
+  print((int*)"z[5] = ");
+  print(itoa(z[5], string_buffer, 10, 0, 0));
   println();
-  print((int*)"x[3] = ");
-  print(itoa(x[3], string_buffer, 10, 0, 0));
+  print((int*)"x[5] = ");
+  print(itoa(x[5], string_buffer, 10, 0, 0));
+  println();
+
+  print((int*)"f = ");
+  print(itoa(f, string_buffer, 10, 0, 0));
+  println();
+  print((int*)"y = ");
+  print(itoa(y, string_buffer, 10, 0, 0));
   println();
 
   if (selfie(argc, (int*) argv) != 0) {
