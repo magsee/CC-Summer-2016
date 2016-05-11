@@ -377,7 +377,7 @@ int reportUndefinedProcedures();
 // |  1 | string  | identifier string, string literal
 // |  2 | line#   | source line number
 // |  3 | class   | VARIABLE, PROCEDURE, STRING
-// |  4 | type    | INT_T, INTSTAR_T, VOID_T, INT_A, INT_S_A
+// |  4 | type    | INT_T, INTSTAR_T, VOID_T, INT_A
 // |  5 | value   | VARIABLE: initial value
 // |  6 | address | VARIABLE: offset, PROCEDURE: address, STRING: offset
 // |  7 | scope   | REG_GP, REG_FP
@@ -452,7 +452,6 @@ int INT_T     = 1;
 int INTSTAR_T = 2;
 int VOID_T    = 3;
 int INT_A     = 4;
-int INT_S_A   = 5;
 
 // symbol tables
 int GLOBAL_TABLE  = 1;
@@ -2744,6 +2743,8 @@ int gr_factor(int* constant) {
 
       emitIFormat(OP_LW, currentTemporary(), currentTemporary(), 0);
 
+      type = INT_T;
+
     } else {
       // variable access: identifier
       type = load_variable(variableOrProcedureName);
@@ -3296,27 +3297,26 @@ int gr_expression() {
 
 int gr_index(int* variableOrProcedureName) {
 
-  int index;
+  int type;
   int* array;
-  int arrayAddress;
 
-  index = gr_expression();
+  array = getVariable(variableOrProcedureName);
 
-  if (index == INT_T) {
+  talloc();
+  emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), getAddress(array));
+
+  type = gr_expression();
+
+  if (type == INT_T) {
 
     if (symbol == SYM_RBRACKET) {
 
-      array = getVariable(variableOrProcedureName);
-
-      arrayAddress = getAddress(array);
-
-      load_integer(SIZEOFINT);
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
-      emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
-      emitIFormat(OP_ADDIU, REG_ZR, nextTemporary(), arrayAddress);
-      emitRFormat(OP_SPECIAL, nextTemporary(), previousTemporary(), previousTemporary(), FCT_SUBU);
-      emitRFormat(OP_SPECIAL, getScope(array), previousTemporary(), previousTemporary(), FCT_ADDU);
+      emitLeftShiftBy(2);
+      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
       tfree(1);
+      emitRFormat(OP_SPECIAL, getScope(array), currentTemporary(), currentTemporary(), FCT_ADDU);
+
+      type = INT_A;
 
       getSymbol();
     } else {
@@ -3326,7 +3326,7 @@ int gr_index(int* variableOrProcedureName) {
     syntaxErrorSymbol(INT_T);
   }
 
-  return index;
+  return type;
 }
 
 void gr_while() {
@@ -3548,20 +3548,7 @@ void gr_statement() {
 
       getSymbol();
 
-      if (symbol == SYM_LBRACKET) {
-
-        getSymbol();
-
-        print(itoa(symbol, string_buffer, 10, 0, 0));
-        println();
-
-        ltype = gr_index(identifier);
-
-      } else {
-
-        ltype = load_variable(identifier);
-
-      }
+      ltype = load_variable(identifier);
 
       if (ltype != INTSTAR_T)
         typeWarning(INTSTAR_T, ltype);
@@ -3636,6 +3623,8 @@ void gr_statement() {
 
       isArray = 1;
 
+      ltype = INT_T;
+
     }
 
     // call
@@ -3660,6 +3649,10 @@ void gr_statement() {
       if(isArray == 0) {
 
         ltype = getType(entry);
+
+      } else {
+
+
 
       }
 
@@ -3752,9 +3745,7 @@ void gr_variable(int offset) {
 
       getSymbol();
 
-      if (type == INTSTAR_T) {
-        type = INT_S_A;
-      } else if (type == INT_T) {
+      if (type == INT_T) {
         type = INT_A;
       }
 
@@ -3776,7 +3767,7 @@ void gr_variable(int offset) {
     }
 
     if (size != 0)
-      offset = offset - roundUp(size + 1, SIZEOFINT);
+      offset = offset - (size - 1) * WORDSIZE;
 
     //print(itoa(offset, string_buffer, 10, 0, 0));
     //println();
@@ -4076,14 +4067,15 @@ void gr_cstar() {
         if (symbol == SYM_LPARENTHESIS)
           gr_procedure(variableOrProcedureName, type);
         else {
-          if(size != 0)
-            allocatedMemory = allocatedMemory + roundUp(size, WORDSIZE);
-          else
-            allocatedMemory = allocatedMemory + WORDSIZE;
+          allocatedMemory = allocatedMemory + WORDSIZE;
 
           // type identifier ";" global variable declaration
           if (symbol == SYM_SEMICOLON) {
             createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, type, 0, -allocatedMemory, size);
+
+            if (size != 0) {
+              allocatedMemory = allocatedMemory + roundUp((size - 1) * WORDSIZE, WORDSIZE);
+            }
 
             getSymbol();
 
@@ -7182,7 +7174,7 @@ int selfie(int argc, int* argv) {
   return 0;
 }
 
-//int z[10];
+//int q[10];
 int f;
 
 int main(int argc, int* argv) {
@@ -7214,27 +7206,31 @@ int main(int argc, int* argv) {
   //print(itoa(x, string_buffer, 10, 0, 0));
   //println();
 
-  //x[0] = 12;
-  //x[1] = 67;
+  x[0] = 12;
+  x[1] = 67;
   //x[2] = 34;
-  //x[1 + 2 ] = x[0] + x[1];
+  x[1 + 2 ] = x[0] + x[1];
 
-  z[5] = 56;
-  x[5] = 42;
+  z[9] = 56;
+  x[9] = 42;
+  //q[5] = 67;
 
-  //f = z[5];
-  y = x[5];
+  f = z[9];
+  y = x[9];
 
   //*x = 45;
   //*(x + 1) = 78;
   //*(x + 2) = 32;
   //*(x + 3) = 12;
 
-  print((int*)"z[5] = ");
-  print(itoa(z[5], string_buffer, 10, 0, 0));
+  print((int*)"z[9] = ");
+  print(itoa(z[9], string_buffer, 10, 0, 0));
   println();
-  print((int*)"x[5] = ");
-  print(itoa(x[5], string_buffer, 10, 0, 0));
+  print((int*)"x[9] = ");
+  print(itoa(x[9], string_buffer, 10, 0, 0));
+  println();
+  print((int*)"x[3] = ");
+  print(itoa(x[3], string_buffer, 10, 0, 0));
   println();
 
   print((int*)"f = ");
