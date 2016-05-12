@@ -4542,8 +4542,10 @@ void emitGlobalsStrings() {
   while ((int) entry != 0) {
     if (getClass(entry) == VARIABLE) {
       storeBinary(binaryLength, getValue(entry));
-
-      binaryLength = binaryLength + WORDSIZE;
+      if(getSize(entry) == 0)
+        binaryLength = binaryLength + WORDSIZE;
+      else
+        binaryLength = binaryLength + getSize(entry) * WORDSIZE;
     } else if (getClass(entry) == STRING)
       binaryLength = copyStringToBinary(getString(entry), binaryLength);
 
@@ -7174,7 +7176,7 @@ int selfie(int argc, int* argv) {
   return 0;
 }
 
-//int q[10];
+int q[10];
 int f;
 
 int main(int argc, int* argv) {
@@ -7213,7 +7215,7 @@ int main(int argc, int* argv) {
 
   z[9] = 56;
   x[9] = 42;
-  //q[5] = 67;
+  q[5] = 67;
 
   f = z[9];
   y = x[9];
@@ -7231,6 +7233,9 @@ int main(int argc, int* argv) {
   println();
   print((int*)"x[3] = ");
   print(itoa(x[3], string_buffer, 10, 0, 0));
+  println();
+  print((int*)"q[5] = ");
+  print(itoa(q[5], string_buffer, 10, 0, 0));
   println();
 
   print((int*)"f = ");
