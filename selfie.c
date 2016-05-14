@@ -2635,6 +2635,7 @@ int gr_factor(int* constant) {
   int hasCast;
   int cast;
   int type;
+  int* array;
 
   int* variableOrProcedureName;
 
@@ -2747,8 +2748,15 @@ int gr_factor(int* constant) {
 
     } else {
       // variable access: identifier
-      type = load_variable(variableOrProcedureName);
 
+      array = getVariable(variableOrProcedureName);
+      if(getType(array) == INT_A) {
+        talloc();
+        emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), getAddress(array));
+        emitRFormat(OP_SPECIAL, getScope(array), currentTemporary(), currentTemporary(), FCT_ADDU);
+      } else {
+        type = load_variable(variableOrProcedureName);
+      }
     }
     // integer?
   } else if (symbol == SYM_INTEGER) {
@@ -3302,8 +3310,16 @@ int gr_index(int* variableOrProcedureName) {
 
   array = getVariable(variableOrProcedureName);
 
-  talloc();
-  emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), getAddress(array));
+  if(getAddress(array) > 0) {
+
+    load_variable(identifier);
+
+  } else {
+
+    talloc();
+    emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), getAddress(array));
+
+  }
 
   type = gr_expression();
 
@@ -3314,7 +3330,8 @@ int gr_index(int* variableOrProcedureName) {
       emitLeftShiftBy(2);
       emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
       tfree(1);
-      emitRFormat(OP_SPECIAL, getScope(array), currentTemporary(), currentTemporary(), FCT_ADDU);
+      if (getAddress(array) <= 0)
+        emitRFormat(OP_SPECIAL, getScope(array), currentTemporary(), currentTemporary(), FCT_ADDU);
 
       type = INT_A;
 
@@ -3749,12 +3766,15 @@ void gr_variable(int offset) {
         type = INT_A;
       }
 
-      gr_shiftExpression(constant);
+      if (symbol != SYM_RBRACKET) {
 
-      if (*constant) {
-        size = *(constant + 1);
-      } else {
-        syntaxErrorUnexpected();
+        gr_shiftExpression(constant);
+
+        if (*constant) {
+          size = *(constant + 1);
+        } else {
+          syntaxErrorUnexpected();
+        }
       }
 
       if (symbol == SYM_RBRACKET) {
@@ -7176,14 +7196,43 @@ int selfie(int argc, int* argv) {
   return 0;
 }
 
-int q[10];
+void printArray(int array[], int g) {
+
+  int i;
+  i = 2;
+  g = array[2];
+  g = array[i];
+  i = 0;
+  print((int*)"index[");
+  print(itoa(i, string_buffer, 10, 0, 0));
+  print((int*)"] = ");
+  print(itoa(array[i], string_buffer, 10, 0, 0));
+  println();
+  i = i + 1;
+  print((int*)"index[");
+  print(itoa(i, string_buffer, 10, 0, 0));
+  print((int*)"] = ");
+  print(itoa(array[i], string_buffer, 10, 0, 0));
+  println();
+  i = i + 1;
+  print((int*)"index[");
+  print(itoa(i, string_buffer, 10, 0, 0));
+  print((int*)"] = ");
+  print(itoa(array[i], string_buffer, 10, 0, 0));
+  println();
+
+}
+
+int q[32];
 int f;
+int u[32];
 
 int main(int argc, int* argv) {
 
   // int x[10];
   int z[10];
   int x[10];
+  int test[3];
   int y;
 
   initLibrary();
@@ -7213,12 +7262,23 @@ int main(int argc, int* argv) {
   //x[2] = 34;
   x[1 + 2 ] = x[0] + x[1];
 
-  z[9] = 56;
+  y = 9;
+
+  z[y] = 56;
   x[9] = 42;
-  q[5] = 67;
+  q[18] = 67;
+
+  test[0] = 17;
+  test[1] = 53;
+  test[2] = 91;
 
   f = z[9];
-  y = x[9];
+
+  print(itoa(test[0], string_buffer, 10, 0, 0));
+  println();
+
+  printArray(test, f);
+
 
   //*x = 45;
   //*(x + 1) = 78;
@@ -7234,8 +7294,8 @@ int main(int argc, int* argv) {
   print((int*)"x[3] = ");
   print(itoa(x[3], string_buffer, 10, 0, 0));
   println();
-  print((int*)"q[5] = ");
-  print(itoa(q[5], string_buffer, 10, 0, 0));
+  print((int*)"q[18] = ");
+  print(itoa(q[18], string_buffer, 10, 0, 0));
   println();
 
   print((int*)"f = ");
