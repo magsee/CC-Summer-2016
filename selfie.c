@@ -2641,6 +2641,7 @@ int gr_factor(int* constant) {
 
   // assert: n = allocatedTemporaries
 
+  array = 0;
   hasCast = 0;
 
   type = INT_T;
@@ -3312,7 +3313,7 @@ int gr_index(int* variableOrProcedureName) {
 
   if(getAddress(array) > 0) {
 
-    load_variable(identifier);
+    load_variable(variableOrProcedureName);
 
   } else {
 
@@ -3666,10 +3667,6 @@ void gr_statement() {
       if(isArray == 0) {
 
         ltype = getType(entry);
-
-      } else {
-
-
 
       }
 
@@ -7199,26 +7196,26 @@ int selfie(int argc, int* argv) {
 void printArray(int array[], int g) {
 
   int i;
-  i = 2;
-  g = array[2];
-  g = array[i];
   i = 0;
+  array[g] = g;
   print((int*)"index[");
   print(itoa(i, string_buffer, 10, 0, 0));
   print((int*)"] = ");
   print(itoa(array[i], string_buffer, 10, 0, 0));
   println();
-  i = i + 1;
+  i = 1;
   print((int*)"index[");
   print(itoa(i, string_buffer, 10, 0, 0));
   print((int*)"] = ");
-  print(itoa(array[i], string_buffer, 10, 0, 0));
+  print(itoa(array[1], string_buffer, 10, 0, 0));
   println();
-  i = i + 1;
+  i = 2;
   print((int*)"index[");
   print(itoa(i, string_buffer, 10, 0, 0));
   print((int*)"] = ");
-  print(itoa(array[i], string_buffer, 10, 0, 0));
+  print(itoa(array[2], string_buffer, 10, 0, 0));
+  println();
+  print(itoa(g, string_buffer, 10, 0, 0));
   println();
 
 }
@@ -7272,7 +7269,7 @@ int main(int argc, int* argv) {
   test[1] = 53;
   test[2] = 91;
 
-  f = z[9];
+  f = 2;
 
   print(itoa(test[0], string_buffer, 10, 0, 0));
   println();
