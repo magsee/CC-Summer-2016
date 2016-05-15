@@ -25,7 +25,7 @@ type             = "int" [ "*" ] .
 
 array            = "int" identifier index .
 
-index            = "[" expression "]" .
+index            = "[" expression "]" [ "[" expression "]" ].
 
 cast             = "(" type ")" .
 
@@ -67,11 +67,11 @@ statement        = ( [ "*" ] identifier | "*" "(" expression ")" ) "="
                     if |
                     return ";" .
 
-variable         = type identifier | array .
+variable         = type identifier [ "[" integer "]" ] [ "[" integer "]" ] .
 
 procedure        = "(" [ variable { "," variable } ] ")"
                     ( ";" | "{" { variable ";" } { statement } "}" ) .
 
-cstar            = { type identifier [ "=" [ cast ] [ "-" ] literal ] ";" |
+cstar            = { type identifier [ "[" integer "]" ] [ "[" integer "]" ] [ "=" [ cast ] [ "-" ] literal ] ";" |
                    ( "void" | type ) identifier procedure } .
 ```
