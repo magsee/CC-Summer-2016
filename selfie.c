@@ -4021,8 +4021,10 @@ void gr_cstar() {
   int isArray;
   int aSplit;
   int aLine;
+  int size;
   int* constant;
 
+  size = 0;
   aSplit = 0;
   aLine = 0;
   isArray = 0;
@@ -4071,6 +4073,8 @@ void gr_cstar() {
 
           if (*constant) {
             aSplit = *(constant + 1);
+            aLine = 1;
+            size = aSplit;
           } else {
             syntaxErrorUnexpected();
           }
@@ -4084,6 +4088,36 @@ void gr_cstar() {
           }
         }
 
+
+
+             if (symbol == SYM_LBRACKET) {
+
+               getSymbol();
+               type = gr_shiftExpression(constant);
+
+               if (*constant) {
+                 aSplit = *(constant + 1);
+                 aLine = 1;
+                 size = aSplit * aLine;
+               } else {
+                 syntaxErrorUnexpected();
+               }
+
+               if (symbol == SYM_RBRACKET) {
+
+                 getSymbol();
+
+               } else {
+                 syntaxErrorSymbol(SYM_RBRACKET);
+               }
+
+               getSymbol();
+
+               allocatedMemory = allocatedMemory + (WORDSIZE * size);
+               createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, type, 0, -allocatedMemory, aSplit, aLine);
+             }
+
+
         // type identifier "(" procedure declaration or definition
         if (symbol == SYM_LPARENTHESIS)
           gr_procedure(variableOrProcedureName, type);
@@ -4095,7 +4129,7 @@ void gr_cstar() {
             createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, type, 0, -allocatedMemory, aSplit, aLine);
 
             if (aSplit != 0) {
-              allocatedMemory = allocatedMemory + roundUp((aSplit - 1) * WORDSIZE, WORDSIZE);
+              allocatedMemory = allocatedMemory + roundUp((aSplit - 1) * (WORDSIZE ), WORDSIZE);
             }
 
             getSymbol();
