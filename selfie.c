@@ -3749,9 +3749,11 @@ void gr_variable(int offset) {
   int aSplit;
   int aLine;
   int* constant;
+  int size;
 
   aSplit = 0;
   aLine = 0;
+  size = 0;
 
   constant = malloc(2 * SIZEOFINTSTAR);
 
@@ -3777,6 +3779,7 @@ void gr_variable(int offset) {
 
         if (*constant) {
           aSplit = *(constant + 1);
+          aLine = 1;
         } else {
           syntaxErrorUnexpected();
         }
@@ -3790,9 +3793,28 @@ void gr_variable(int offset) {
         syntaxErrorSymbol(SYM_RBRACKET);
       }
     }
+      //getSymbol();
+      if(symbol == SYM_LBRACKET){
+      if (*constant) {
+        aLine = *(constant + 1);
+      } else {
+        syntaxErrorUnexpected();
+      }
+          getSymbol();
 
-    if (aSplit != 0)
-      offset = offset - (aSplit - 1) * WORDSIZE;
+    if (symbol != SYM_RBRACKET)
+      syntaxErrorSymbol(SYM_RBRACKET);
+    else
+      getSymbol();
+
+    size = aSplit * aLine;
+  }
+
+  if (aSplit != 0) {
+    offset = offset - (size - 1) * WORDSIZE;
+  }
+  //  if (aSplit != 0)
+  //    offset = offset - (aSplit - 1) * WORDSIZE;
 
     createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, aSplit, aLine);
 
@@ -3977,7 +3999,7 @@ void gr_procedure(int* procedure, int returnType) {
       entry = getSymbolTableEntry(identifier, VARIABLE);
 
       if (getType(entry) == INT_A)
-       localVariables = localVariables + getASplit(entry) - 1;
+       localVariables = localVariables + getASplit(entry) * getALine(entry)- 1;
 
       if (symbol == SYM_SEMICOLON)
         getSymbol();
@@ -4600,7 +4622,7 @@ void emitGlobalsStrings() {
       if(getASplit(entry) == 0)
         binaryLength = binaryLength + WORDSIZE;
       else
-        binaryLength = binaryLength + getASplit(entry) * WORDSIZE;
+        binaryLength = binaryLength + getASplit(entry) * getALine(entry) * WORDSIZE;
     } else if (getClass(entry) == STRING)
       binaryLength = copyStringToBinary(getString(entry), binaryLength);
 
@@ -7231,6 +7253,11 @@ int selfie(int argc, int* argv) {
   return 0;
 }
 
+//int testGlobal[10];
+
+int testGlobal2D[10][5];
+
+
 int main(int argc, int* argv) {
 
   initLibrary();
@@ -7246,6 +7273,8 @@ int main(int argc, int* argv) {
 
   argc = argc - 1;
   argv = argv + 1;
+
+  //testGlobal2D[1][1] = 1;
 
   print((int*)"This is knights Selfie");
   println();
