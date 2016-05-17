@@ -283,6 +283,7 @@ int SYM_LBRACKET     = 30; // [
 int SYM_RBRACKET     = 31; // ]
 
 int SYMBOLS[32][2]; // array of strings representing symbols
+void printSymbolCount();
 
 int maxIdentifierLength = 64; // maximum number of characters in an identifier
 int maxIntegerLength    = 10; // maximum number of characters in an integer
@@ -312,7 +313,6 @@ int sourceFD    = 0;        // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void initScanner() {
-  int initialZero;
 
   SYMBOLS[SYM_IDENTIFIER][0]   = (int) "identifier";
   SYMBOLS[SYM_INTEGER][0]      = (int) "integer";
@@ -349,15 +349,6 @@ void initScanner() {
 
   character = CHAR_EOF;
   symbol    = SYM_EOF;
-
-  //set all symbol aLines at 0
-  initialZero = 0;
-
-   while (initialZero < 32){
-     SYMBOLS[initialZero][1] = 0;
-
-     initialZero = initialZero + 1;
-   }
 }
 
 void resetScanner() {
@@ -1811,10 +1802,11 @@ int getSymbol() {
 
   if (findNextCharacter() == CHAR_EOF)
     return SYM_EOF;
-  else if (symbol == SYM_DIV)
+  else if (symbol == SYM_DIV) {
     // check here because / was recognized instead of //
+    SYMBOLS[symbol][1] = SYMBOLS[symbol][1] + 1;
     return SYM_DIV;
-
+  }
   if (isCharacterLetter()) {
     identifier = malloc(maxIdentifierLength + 1);
 
@@ -2054,6 +2046,9 @@ int getSymbol() {
 
     exit(-1);
   }
+  //print(itoa(SYMBOLS[symbol][0], string_buffer, 10, 0, 0));
+  //println();
+  SYMBOLS[symbol][1] = SYMBOLS[symbol][1] + 1;
 
   return symbol;
 }
@@ -7271,22 +7266,30 @@ int selfie(int argc, int* argv) {
   return 0;
 }
 
-int x[56];
-int y[10][10];
-int z;
+void printSymbolCount() {
+  int i;
+  i = 0;
 
-void printArray(int array[10][10]) {
+  while (i < 32) {
+    printSymbol(i);
+    print((int*) " counted ");
+    print(itoa(SYMBOLS[i][1], string_buffer, 10, 0, 0));
+    print((int*) " times.");
+    println();
 
-  print(itoa(array[3][5], string_buffer, 10, 0, 0));
-  println();
+    i = i + 1;
+  }
+}
+
+int x[32][2];
+
+void test() {
+  x[12][1] = 7;
 }
 
 int main(int argc, int* argv) {
 
-  int c;
-  int b[5];
-  int a[10][10];
-  int* array;
+  int blubb;
 
   initLibrary();
 
@@ -7305,20 +7308,17 @@ int main(int argc, int* argv) {
   print((int*)"This is knights Selfie");
   println();
 
-  y[3][5] = 23;
-  a[3][5] = y[3][5];
-  x[3] = a[3][5];
-  a[3][5] = 27;
-  z = x[3];
+  x[0][1] = x[0][1] + 1;
 
-  print(itoa(z, string_buffer, 10, 0, 0));
+  blubb = SYMBOLS[0][0];
+
+  print(itoa(blubb, string_buffer, 10, 0, 0));
   println();
-  print(itoa(a[3][5], string_buffer, 10, 0, 0));
+  test();
+  print(itoa(x[12][1], string_buffer, 10, 0, 0));
   println();
 
-  a[3][5] = 37;
-
-  printArray(a);
+  //printSymbolCount();
 
   if (selfie(argc, (int*) argv) != 0) {
     print(selfieName);
