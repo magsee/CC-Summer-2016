@@ -3335,7 +3335,27 @@ int gr_index(int* variableOrProcedureName) {
 
     if (symbol == SYM_RBRACKET) {
 
-      emitLeftShiftBy(2);
+      emitLeftShiftBy(2); //WORDSIZE
+
+      getSymbol();
+
+      if (symbol == SYM_LBRACKET) {
+
+        type = gr_expression();
+
+        emitLeftShiftBy(2); //WORDSIZE
+        talloc();
+        emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), getSizeY(array));
+        emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
+        emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+        tfree(1);
+        emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
+        tfree(1);
+
+        getSymbol();
+
+      }
+
       emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
       tfree(1);
       if (getAddress(array) <= 0)
@@ -3343,7 +3363,6 @@ int gr_index(int* variableOrProcedureName) {
 
       type = INT_A;
 
-      getSymbol();
     } else {
       syntaxErrorSymbol(SYM_RBRACKET);
     }
@@ -4080,6 +4099,25 @@ void gr_cstar() {
 
             getSymbol();
 
+            if (symbol == SYM_LBRACKET) {
+
+              getSymbol();
+
+              type = gr_shiftExpression(constant);
+
+              if (*constant)
+                sizeX = *(constant + 1);
+              else
+                syntaxErrorUnexpected();
+
+              if (symbol == SYM_RBRACKET) {
+
+                getSymbol();
+
+              } else {
+                syntaxErrorSymbol(SYM_RBRACKET);
+              }
+            }
           } else {
             syntaxErrorSymbol(SYM_RBRACKET);
           }
@@ -4093,11 +4131,13 @@ void gr_cstar() {
 
           // type identifier ";" global variable declaration
           if (symbol == SYM_SEMICOLON) {
-            createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, type, 0, -allocatedMemory, sizeY, 0);
+            createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, type, 0, -allocatedMemory, sizeY, sizeX);
 
-            if (sizeY != 0) {
-              allocatedMemory = allocatedMemory + roundUp((sizeY - 1) * WORDSIZE, WORDSIZE);
-            }
+            if (sizeY != 0)
+              if (sizeX != 0)
+                allocatedMemory = allocatedMemory + (sizeY * sizeX - 1) * WORDSIZE;
+              else
+                allocatedMemory = allocatedMemory + (sizeY - 1) * WORDSIZE;
 
             getSymbol();
 
@@ -4567,7 +4607,10 @@ void emitGlobalsStrings() {
       if(getSizeY(entry) == 0)
         binaryLength = binaryLength + WORDSIZE;
       else
-        binaryLength = binaryLength + getSizeY(entry) * WORDSIZE;
+        if(getSizeX(entry) == 0)
+          binaryLength = binaryLength + getSizeY(entry) * WORDSIZE;
+        else
+          binaryLength = binaryLength + getSizeY(entry) * getSizeX(entry) * WORDSIZE;
     } else if (getClass(entry) == STRING)
       binaryLength = copyStringToBinary(getString(entry), binaryLength);
 
@@ -7198,7 +7241,13 @@ int selfie(int argc, int* argv) {
   return 0;
 }
 
+int x[56];
+int y[3][4];
+int z;
+
 int main(int argc, int* argv) {
+
+  int c;
 
   initLibrary();
 
@@ -7215,6 +7264,16 @@ int main(int argc, int* argv) {
   argv = argv + 1;
 
   print((int*)"This is knights Selfie");
+  println();
+
+  y[1][2] = 23;
+  y[2][1] = 97;
+  x[3] = y[1][2];
+  z = x[3];
+
+  print(itoa(z, string_buffer, 10, 0, 0));
+  println();
+  print(itoa(y[2][1], string_buffer, 10, 0, 0));
   println();
 
   if (selfie(argc, (int*) argv) != 0) {
