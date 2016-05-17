@@ -3341,6 +3341,8 @@ int gr_index(int* variableOrProcedureName) {
 
       if (symbol == SYM_LBRACKET) {
 
+        getSymbol();
+
         type = gr_expression();
 
         emitLeftShiftBy(2); //WORDSIZE
@@ -3791,30 +3793,45 @@ void gr_variable(int offset) {
         type = INT_A;
       }
 
-      if (symbol != SYM_RBRACKET) {
-
-        gr_shiftExpression(constant);
-
-        if (*constant) {
-          sizeY = *(constant + 1);
-        } else {
-          syntaxErrorUnexpected();
-        }
-      }
+      gr_shiftExpression(constant);
 
       if (symbol == SYM_RBRACKET) {
 
+        if (*constant)
+          sizeY = *(constant + 1);
+        else
+          syntaxErrorUnexpected();
+
         getSymbol();
 
+        if (symbol == SYM_LBRACKET) {
+
+          getSymbol();
+
+          gr_shiftExpression(constant);
+
+          if (symbol == SYM_RBRACKET) {
+
+            if (*constant)
+              sizeX = *(constant + 1);
+            else
+              syntaxErrorUnexpected();
+
+              getSymbol();
+          }
+        }
       } else {
         syntaxErrorSymbol(SYM_RBRACKET);
       }
     }
 
     if (sizeY != 0)
-      offset = offset - (sizeY - 1) * WORDSIZE;
+      if(sizeX != 0)
+        offset = offset - (sizeY * sizeX - 1) * WORDSIZE;
+      else
+        offset = offset - (sizeY - 1) * WORDSIZE;
 
-    createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, sizeY, 0);
+    createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, sizeY, sizeX);
 
   } else {
     syntaxErrorSymbol(SYM_IDENTIFIER);
@@ -3997,7 +4014,10 @@ void gr_procedure(int* procedure, int returnType) {
       entry = getSymbolTableEntry(identifier, VARIABLE);
 
       if (getType(entry) == INT_A)
-       localVariables = localVariables + getSizeY(entry) - 1;
+        if (getSizeX(entry) != 0)
+          localVariables = localVariables + getSizeY(entry) * getSizeX(entry) - 1;
+        else
+          localVariables = localVariables + getSizeY(entry) - 1;
 
       if (symbol == SYM_SEMICOLON)
         getSymbol();
@@ -7242,12 +7262,21 @@ int selfie(int argc, int* argv) {
 }
 
 int x[56];
-int y[3][4];
+int y[10][10];
 int z;
+
+void printArray(int array[10][10]) {
+
+  print(itoa(array[3][5], string_buffer, 10, 0, 0));
+  println();
+}
 
 int main(int argc, int* argv) {
 
   int c;
+  int b[5];
+  int a[10][10];
+  int* array;
 
   initLibrary();
 
@@ -7266,15 +7295,20 @@ int main(int argc, int* argv) {
   print((int*)"This is knights Selfie");
   println();
 
-  y[1][2] = 23;
-  y[2][1] = 97;
-  x[3] = y[1][2];
+  y[3][5] = 23;
+  a[3][5] = y[3][5];
+  x[3] = a[3][5];
+  a[3][5] = 27;
   z = x[3];
 
   print(itoa(z, string_buffer, 10, 0, 0));
   println();
-  print(itoa(y[2][1], string_buffer, 10, 0, 0));
+  print(itoa(a[3][5], string_buffer, 10, 0, 0));
   println();
+
+  a[3][5] = 37;
+
+  printArray(a);
 
   if (selfie(argc, (int*) argv) != 0) {
     print(selfieName);
