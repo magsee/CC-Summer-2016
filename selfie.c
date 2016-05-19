@@ -314,6 +314,8 @@ int sourceFD    = 0;        // file descriptor of open source file
 
 void initScanner() {
 
+  int i;
+
   SYMBOLS[SYM_IDENTIFIER][0]   = (int) "identifier";
   SYMBOLS[SYM_INTEGER][0]      = (int) "integer";
   SYMBOLS[SYM_VOID][0]         = (int) "void";
@@ -349,6 +351,13 @@ void initScanner() {
 
   character = CHAR_EOF;
   symbol    = SYM_EOF;
+
+  i = 0;
+  while (i < 32) {
+    SYMBOLS[i][1] = 0;
+    i = i + 1;
+  }
+
 }
 
 void resetScanner() {
@@ -2046,9 +2055,11 @@ int getSymbol() {
 
     exit(-1);
   }
-  //print(itoa(SYMBOLS[symbol][0], string_buffer, 10, 0, 0));
-  //println();
   SYMBOLS[symbol][1] = SYMBOLS[symbol][1] + 1;
+  if (symbol == SYM_MOD) {
+    print(itoa(SYMBOLS[symbol][1], string_buffer, 10, 0, 0));
+    println();
+  }
 
   return symbol;
 }
@@ -2778,9 +2789,6 @@ int gr_factor(int* constant) {
     *(constant + 1) = literal;
 
     getSymbol();
-
-    *constant = 1;
-    *(constant + 1) = literal;
 
     type = INT_T;
 
@@ -3830,11 +3838,12 @@ void gr_variable(int offset) {
       }
     }
 
-    if (sizeY != 0)
+    if (sizeY != 0) {
       if(sizeX != 0)
         offset = offset - (sizeY * sizeX - 1) * WORDSIZE;
       else
         offset = offset - (sizeY - 1) * WORDSIZE;
+    }
 
     createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, sizeY, sizeX);
 
@@ -4104,6 +4113,11 @@ void gr_cstar() {
       if (symbol == SYM_IDENTIFIER) {
         variableOrProcedureName = identifier;
 
+        sizeY = 0;
+        sizeX = 0;
+        *constant = 0;
+        isArray = 0;
+
         getSymbol();
 
         if (symbol == SYM_LBRACKET) {
@@ -4156,13 +4170,15 @@ void gr_cstar() {
 
           // type identifier ";" global variable declaration
           if (symbol == SYM_SEMICOLON) {
-            createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, type, 0, -allocatedMemory, sizeY, sizeX);
 
-            if (sizeY != 0)
+            if (sizeY != 0) {
               if (sizeX != 0)
                 allocatedMemory = allocatedMemory + (sizeY * sizeX - 1) * WORDSIZE;
               else
                 allocatedMemory = allocatedMemory + (sizeY - 1) * WORDSIZE;
+            }
+
+            createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, type, 0, -allocatedMemory, sizeY, sizeX);
 
             getSymbol();
 
@@ -4629,13 +4645,14 @@ void emitGlobalsStrings() {
   while ((int) entry != 0) {
     if (getClass(entry) == VARIABLE) {
       storeBinary(binaryLength, getValue(entry));
-      if(getSizeY(entry) == 0)
+      if(getSizeY(entry) == 0) {
         binaryLength = binaryLength + WORDSIZE;
-      else
+      } else {
         if(getSizeX(entry) == 0)
           binaryLength = binaryLength + getSizeY(entry) * WORDSIZE;
         else
           binaryLength = binaryLength + getSizeY(entry) * getSizeX(entry) * WORDSIZE;
+      }
     } else if (getClass(entry) == STRING)
       binaryLength = copyStringToBinary(getString(entry), binaryLength);
 
@@ -7284,12 +7301,25 @@ void printSymbolCount() {
 int x[32][2];
 
 void test() {
-  x[12][1] = 7;
+  int i;
+  i = 0;
+  while (i < 32) {
+    x[i][1] = 0;
+    i = i + 1;
+  }
+}
+
+void test1() {
+  x[12][1] = 0;
+}
+
+void test2() {
+  x[12][1] = x[12][1] + 124657;
 }
 
 int main(int argc, int* argv) {
 
-  int blubb;
+  int i;
 
   initLibrary();
 
@@ -7308,15 +7338,15 @@ int main(int argc, int* argv) {
   print((int*)"This is knights Selfie");
   println();
 
-  x[0][1] = x[0][1] + 1;
-
-  blubb = SYMBOLS[0][0];
-
-  print(itoa(blubb, string_buffer, 10, 0, 0));
-  println();
   test();
-  print(itoa(x[12][1], string_buffer, 10, 0, 0));
-  println();
+  test1();
+  test2();
+  i = 0;
+  while (i < 32) {
+    print(itoa(x[i][1], string_buffer, 10, 0, 0));
+    println();
+    i = i + 1;
+  }
 
   //printSymbolCount();
 
