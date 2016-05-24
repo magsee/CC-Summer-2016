@@ -8,7 +8,7 @@ This is the grammar of the C Star (C*) programming language.
 
 C* is a small Turing-complete subset of C that includes dereferencing (the * operator) but excludes data structures, bitwise and Boolean operators, and many other features. C* is supposed to be close to the minimum necessary for implementing a self-compiling, single-pass, recursive-descent compiler.
 
-Keywords: int, while, if, else, return, void
+Keywords: int, while, if, else, return, void, struct
 
 ```
 digit            = "0" | ... | "9" .
@@ -21,9 +21,11 @@ letter           = "a" | ... | "z" | "A" | ... | "Z" .
 
 identifier       = letter { letter | digit | "_" } .
 
-type             = "int" [ "*" ] .
+type             = ( "struct" | "int" ) [ "*" ] .
 
 array            = "int" identifier index .
+
+record           = "struct" identifier "{" {variable} "}"
 
 index            = "[" expression "]" [ "[" expression "]" ].
 

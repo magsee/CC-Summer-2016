@@ -281,8 +281,9 @@ int SYM_LSHIFT       = 28; // <<
 int SYM_RSHIFT       = 29; // >>
 int SYM_LBRACKET     = 30; // [
 int SYM_RBRACKET     = 31; // ]
+int SYM_STRUCT       = 32;  // struct
 
-int SYMBOLS[32][2]; // array of strings representing symbols
+int SYMBOLS[33][2]; // array of strings representing symbols
 void printSymbolCount();
 
 int maxIdentifierLength = 64; // maximum number of characters in an identifier
@@ -348,12 +349,13 @@ void initScanner() {
   SYMBOLS[SYM_RSHIFT][0]       = (int) ">>";
   SYMBOLS[SYM_LBRACKET][0]     = (int) "[";
   SYMBOLS[SYM_RBRACKET][0]     = (int) "]";
+  SYMBOLS[SYM_STRUCT][0]       = (int) "struct";
 
   character = CHAR_EOF;
   symbol    = SYM_EOF;
 
   i = 0;
-  while (i < 32) {
+  while (i < 33) {
     SYMBOLS[i][1] = 0;
     i = i + 1;
   }
@@ -386,7 +388,7 @@ int reportUndefinedProcedures();
 // |  1 | string  | identifier string, string literal
 // |  2 | line#   | source line number
 // |  3 | class   | VARIABLE, PROCEDURE, STRING
-// |  4 | type    | INT_T, INTSTAR_T, VOID_T, INT_A
+// |  4 | type    | INT_T, INTSTAR_T, VOID_T, ARRAY_T, STRUCT_T
 // |  5 | value   | VARIABLE: initial value
 // |  6 | address | VARIABLE: offset, PROCEDURE: address, STRING: offset
 // |  7 | scope   | REG_GP, REG_FP
@@ -463,12 +465,14 @@ void setSizeX(int* entry, int size)          {
 int VARIABLE  = 1;
 int PROCEDURE = 2;
 int STRING    = 3;
+int STRUCT    = 4;
 
 // types
 int INT_T     = 1;
 int INTSTAR_T = 2;
 int VOID_T    = 3;
-int INT_A     = 4;
+int ARRAY_T     = 4;
+int STRUCT_T  = 5;
 
 // symbol tables
 int GLOBAL_TABLE  = 1;
@@ -1800,6 +1804,8 @@ int identifierOrKeyword() {
     return SYM_RETURN;
   if (identifierStringMatch(SYM_VOID))
     return SYM_VOID;
+  if (identifierStringMatch(SYM_STRUCT))
+    return SYM_STRUCT;
   else
     return SYM_IDENTIFIER;
 }
@@ -2056,10 +2062,10 @@ int getSymbol() {
     exit(-1);
   }
   SYMBOLS[symbol][1] = SYMBOLS[symbol][1] + 1;
-  if (symbol == SYM_MOD) {
-    print(itoa(SYMBOLS[symbol][1], string_buffer, 10, 0, 0));
-    println();
-  }
+  // if (symbol == SYM_MOD) {
+  //   print(itoa(SYMBOLS[symbol][1], string_buffer, 10, 0, 0));
+  //   println();
+  // }
 
   return symbol;
 }
@@ -2300,6 +2306,8 @@ int lookForType() {
     return 0;
   else if (symbol == SYM_EOF)
     return 0;
+  else if (symbol == SYM_STRUCT)
+    return 0;
   else
     return 1;
 }
@@ -2404,8 +2412,8 @@ int* putType(int type) {
     return (int*) "int";
   else if (type == INTSTAR_T)
     return (int*) "int*";
-  else if (type == INT_A)
-    return (int*) "int_a";
+  else if (type == ARRAY_T)
+    return (int*) "array_t";
   else if (type == VOID_T)
     return (int*) "void";
   else
@@ -2774,7 +2782,7 @@ int gr_factor(int* constant) {
       // variable access: identifier
 
       array = getVariable(variableOrProcedureName);
-      if(getType(array) == INT_A) {
+      if(getType(array) == ARRAY_T) {
         talloc();
         emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), getAddress(array));
         emitRFormat(OP_SPECIAL, getScope(array), currentTemporary(), currentTemporary(), FCT_ADDU);
@@ -3376,7 +3384,7 @@ int gr_index(int* variableOrProcedureName) {
       if (getAddress(array) <= 0)
         emitRFormat(OP_SPECIAL, getScope(array), currentTemporary(), currentTemporary(), FCT_ADDU);
 
-      type = INT_A;
+      type = ARRAY_T;
 
     } else {
       syntaxErrorSymbol(SYM_RBRACKET);
@@ -3803,7 +3811,7 @@ void gr_variable(int offset) {
       getSymbol();
 
       if (type == INT_T) {
-        type = INT_A;
+        type = ARRAY_T;
       }
 
       gr_shiftExpression(constant);
@@ -4027,12 +4035,12 @@ void gr_procedure(int* procedure, int returnType) {
 
       entry = getSymbolTableEntry(identifier, VARIABLE);
 
-      if (getType(entry) == INT_A)
+      if (getType(entry) == ARRAY_T){
         if (getSizeX(entry) != 0)
           localVariables = localVariables + getSizeY(entry) * getSizeX(entry) - 1;
         else
           localVariables = localVariables + getSizeY(entry) - 1;
-
+      }
       if (symbol == SYM_SEMICOLON)
         getSymbol();
       else
@@ -7298,28 +7306,28 @@ void printSymbolCount() {
   }
 }
 
-int x[32][2];
-
-void test() {
-  int i;
-  i = 0;
-  while (i < 32) {
-    x[i][1] = 0;
-    i = i + 1;
-  }
-}
-
-void test1() {
-  x[12][1] = 0;
-}
-
-void test2() {
-  x[12][1] = x[12][1] + 124657;
-}
+// int x[32][2];
+//
+// void test() {
+//   int i;
+//   i = 0;
+//   while (i < 32) {
+//     x[i][1] = 0;
+//     i = i + 1;
+//   }
+// }
+//
+// void test1() {
+//   x[12][1] = 0;
+// }
+//
+// void test2() {
+//   x[12][1] = x[12][1] + 124657;
+// }
 
 int main(int argc, int* argv) {
 
-  int i;
+  //int i;
 
   initLibrary();
 
@@ -7338,15 +7346,15 @@ int main(int argc, int* argv) {
   print((int*)"This is knights Selfie");
   println();
 
-  test();
-  test1();
-  test2();
-  i = 0;
-  while (i < 32) {
-    print(itoa(x[i][1], string_buffer, 10, 0, 0));
-    println();
-    i = i + 1;
-  }
+  // test();
+  // test1();
+  // test2();
+  // i = 0;
+  // while (i < 32) {
+  //   print(itoa(x[i][1], string_buffer, 10, 0, 0));
+  //   println();
+  //   i = i + 1;
+  // }
 
   //printSymbolCount();
 
