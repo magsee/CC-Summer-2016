@@ -281,10 +281,20 @@ int SYM_LSHIFT       = 28; // <<
 int SYM_RSHIFT       = 29; // >>
 int SYM_LBRACKET     = 30; // [
 int SYM_RBRACKET     = 31; // ]
-int SYM_STRUCT       = 32;  // struct
+int SYM_STRUCT       = 32; // struct
 
 int SYMBOLS[33][2]; // array of strings representing symbols
 void printSymbolCount();
+
+struct globalstruct {
+   int variable;
+   int* pointerVar;
+   int testArray[3];
+   //int test2DArray[2][3];
+   struct globalstruct* test;
+ };
+
+ struct globalstruct* test;
 
 int maxIdentifierLength = 64; // maximum number of characters in an identifier
 int maxIntegerLength    = 10; // maximum number of characters in an integer
@@ -379,6 +389,9 @@ void createSymbolTableEntry(int which, int* string, int line, int class, int typ
 int* searchSymbolTable(int* entry, int* string, int class);
 int* getSymbolTableEntry(int* string, int class);
 
+void createStructTableEntry(int* entry, int* string, int line, int class, int type, int value, int address, int size, int size2d);
+int* searchStructTable(int* entry, int* string, int class);
+
 int isUndefinedProcedure(int* entry);
 int reportUndefinedProcedures();
 
@@ -426,6 +439,12 @@ int  getSizeY(int* entry) {
 int  getSizeX(int* entry) {
   return *(entry + 9);
 }
+int* getNextField(int* entry) {
+  return (int*) * (entry + 10);
+}
+int* getRefType(int* entry)    {
+  return (int*) * (entry + 11);
+}
 
 
 void setNextEntry(int* entry, int* next)    {
@@ -458,7 +477,12 @@ void setSizeY(int* entry, int size)          {
 void setSizeX(int* entry, int size)          {
   *(entry + 9) = size;
 }
-
+void setNextField(int* entry, int* nextField)    {
+  *(entry + 10)       = (int) nextField;
+}
+void setReferenceType(int* entry, int* type) {
+  *(entry + 11) = (int) type;
+}
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 // classes
@@ -471,8 +495,9 @@ int STRUCT    = 4;
 int INT_T     = 1;
 int INTSTAR_T = 2;
 int VOID_T    = 3;
-int ARRAY_T     = 4;
+int ARRAY_T   = 4;
 int STRUCT_T  = 5;
+int STRUCTPOINTER_T = 6;
 
 // symbol tables
 int GLOBAL_TABLE  = 1;
@@ -508,6 +533,7 @@ int isComparison();
 int lookForFactor();
 int lookForStatement();
 int lookForType();
+int lookForVariableType();
 
 void save_temporaries();
 void restore_temporaries(int numberOfTemporaries);
@@ -2087,6 +2113,8 @@ void createSymbolTableEntry(int whichTable, int* string, int line, int class, in
   setAddress(newEntry, address);
   setSizeY(newEntry, sizeY);
   setSizeX(newEntry, sizeX);
+  setReferenceType(newEntry, (int*) 0);
+  setNextField(newEntry, (int*) 0);
 
   // create entry at head of symbol table
   if (whichTable == GLOBAL_TABLE) {
@@ -3393,6 +3421,7 @@ int gr_index(int* variableOrProcedureName) {
     syntaxErrorSymbol(INT_T);
   }
 
+
   return type;
 }
 
@@ -3780,8 +3809,13 @@ int gr_type() {
 
       getSymbol();
     }
-  } else
-    syntaxErrorSymbol(SYM_INT);
+  } else if (symbol == SYM_STRUCT) {
+    type = STRUCT_T;
+    getSymbol();
+  } else {
+    syntaxErrorMessage((int*) "error in gr_type, no type");
+    printSymbol(symbol);
+  }
 
   return type;
 }
@@ -3793,6 +3827,8 @@ void gr_variable(int offset) {
   int sizeX;
   int* constant;
 
+  int* oldIdentifier;
+
   sizeY = 0;
   sizeX = 0;
 
@@ -3803,9 +3839,17 @@ void gr_variable(int offset) {
   type = gr_type();
 
   if (symbol == SYM_IDENTIFIER) {
+    oldIdentifier = identifier;
 
       getSymbol();
 
+  if (symbol == SYM_ASTERISK) {
+    type = STRUCTPOINTER_T;
+    getSymbol();
+    if (symbol == SYM_IDENTIFIER) {
+      getSymbol();
+    }
+  }
     if (symbol == SYM_LBRACKET) {
 
       getSymbol();
@@ -3853,7 +3897,12 @@ void gr_variable(int offset) {
         offset = offset - (sizeY - 1) * WORDSIZE;
     }
 
-    createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, sizeY, sizeX);
+    if (type == STRUCTPOINTER_T) {
+      type = INTSTAR_T;
+      createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, sizeX, sizeY);
+      setReferenceType(searchSymbolTable(local_symbol_table, identifier, VARIABLE), searchSymbolTable(local_symbol_table, oldIdentifier, VARIABLE));
+    } else
+      createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, sizeX, sizeY);
 
   } else {
     syntaxErrorSymbol(SYM_IDENTIFIER);
@@ -4077,14 +4126,60 @@ void gr_procedure(int* procedure, int returnType) {
   // assert: allocatedTemporaries == 0
 }
 
+void createStructTableEntry(int* entry, int* string, int line, int class, int type, int value, int address, int size, int size2d) {
+  int* newEntry;
+
+  newEntry = malloc(4 * SIZEOFINTSTAR + 8 * SIZEOFINT);
+
+  setString(newEntry, string);
+  setLineNumber(newEntry, line);
+  setClass(newEntry, class);
+  setType(newEntry, type);
+  setValue(newEntry, value);
+  setAddress(newEntry, address);
+  setSizeX(newEntry, size);
+  setSizeY(newEntry, size2d);
+  setReferenceType(newEntry, (int*) 0);
+  setNextField(entry, newEntry);
+}
+
+int* searchStructTable(int* entry, int* string, int class) {
+  while (entry != (int*) 0) {
+    if (stringCompare(string, getString(entry)))
+      if (class == getClass(entry))
+        return entry;
+
+    // keep looking
+    entry = getNextField(entry);
+  }
+
+  return (int*) 0;
+}
+
+int lookForVariableType() {
+  if (symbol == SYM_INT)
+    return 1;
+  else if (symbol == SYM_STRUCT)
+    return 1;
+  else
+    return 0;
+}
+
+
 void gr_cstar() {
   int type;
   int* variableOrProcedureName;
   int isArray;
+  int size;
   int sizeY;
   int sizeX;
   int* constant;
 
+  int fields;
+  int* entry;
+  int* entryString;
+
+  fields = 0;
   sizeY = 0;
   sizeX = 0;
   isArray = 0;
@@ -4118,6 +4213,7 @@ void gr_cstar() {
     } else {
       type = gr_type();
 
+
       if (symbol == SYM_IDENTIFIER) {
         variableOrProcedureName = identifier;
 
@@ -4128,7 +4224,122 @@ void gr_cstar() {
 
         getSymbol();
 
-        if (symbol == SYM_LBRACKET) {
+        ///////////////////////////////////////
+        if (symbol == SYM_LBRACE) {//STRUCT
+          print((int*)"  bin hier her gekommen");
+          println();
+          println();
+          if (type != STRUCT_T)
+            syntaxErrorSymbol(SYM_STRUCT);
+
+          getSymbol();
+
+          createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, type, 0, 0, 1, 1);
+
+          entry = global_symbol_table;
+
+          while (lookForVariableType()) {
+
+            size = 1;
+            sizeY = 1;
+            sizeX = 1;
+
+            type = gr_type();
+
+            if (symbol == SYM_IDENTIFIER) {
+              print((int*)"  bin auch hier her gekommen");
+              println();
+              println();
+              getSymbol();
+              entryString = identifier;
+
+              if (symbol == SYM_ASTERISK) {
+                print((int*)"  bin hier ebenfalls her gekommen");
+                println();
+                println();
+                type = STRUCTPOINTER_T;
+                getSymbol();
+                if (symbol == SYM_IDENTIFIER) {
+                  printSymbol(symbol);
+                  println();
+                  println();
+
+                  getSymbol();
+
+                  print((int*)"  genauso bin ich hier her gekommen");
+                  println();
+                  println();
+                  printSymbol(symbol);
+                  println();
+                  println();
+                }
+                else
+                    print((int*)"STRUCTPOINTER_T expected but not found (gr_cstar)");
+              }
+
+              if (symbol == SYM_LBRACKET) {//ARRAY
+                type = ARRAY_T;
+                getSymbol();
+                if (isLiteral()) {
+                  sizeY = literal;
+                  size = literal;
+                }
+                getSymbol();
+
+                if (symbol != SYM_RBRACKET)
+                  syntaxErrorSymbol(SYM_RBRACKET);
+
+                getSymbol();
+
+                if (symbol == SYM_LBRACKET) {//ARRAY 2D
+                  getSymbol();
+                  if (isLiteral())
+                    sizeX = literal;
+
+                  getSymbol();
+
+                  if (symbol != SYM_RBRACKET)
+                    syntaxErrorSymbol(SYM_RBRACKET);
+                  getSymbol();
+
+                  size = sizeY * sizeX;
+                }
+
+                fields = fields + size;//todo: size passt hier? -1 ????
+
+              } else {
+                fields = fields + 1;
+              }
+
+
+              if (type == STRUCTPOINTER_T) {
+                createStructTableEntry(entry, identifier, lineNumber, VARIABLE, type, 0, -fields, sizeY, sizeX);
+                setReferenceType(searchStructTable(entry, identifier, VARIABLE), getSymbolTableEntry(entryString, VARIABLE));//todo: ??
+              } else if (type == STRUCT_T) {
+                createStructTableEntry(entry, identifier, lineNumber, VARIABLE, type, 0, -fields, sizeY, sizeX);
+                setReferenceType(searchStructTable(entry, identifier, VARIABLE), getSymbolTableEntry(entryString, VARIABLE));
+              } else {
+                createStructTableEntry(entry, identifier, lineNumber, VARIABLE, type, 0, -fields, sizeX, sizeX);
+              }
+
+            } else {
+              syntaxErrorSymbol(SYM_IDENTIFIER);
+              createSymbolTableEntry(GLOBAL_TABLE, (int*) "missing variable name", lineNumber, VARIABLE, type, 0, -fields, 1, 1);
+            }
+
+            if (symbol == SYM_SEMICOLON)
+              getSymbol();
+            else
+              syntaxErrorSymbol(SYM_SEMICOLON);
+          }
+
+          setSizeY(entry, fields);
+        }
+
+        ///////////////////////////////////////////////////////
+
+       if (symbol == SYM_LBRACKET) {
+
 
           getSymbol();
 
@@ -7295,7 +7506,7 @@ void printSymbolCount() {
   int i;
   i = 0;
 
-  while (i < 32) {
+  while (i < 33) {
     printSymbol(i);
     print((int*) " counted ");
     print(itoa(SYMBOLS[i][1], string_buffer, 10, 0, 0));
