@@ -289,8 +289,8 @@ struct globalstruct {
   int variable;
   int* pointerVar;
   //todo: endlessloop with arrays
-  //int testArray[3];
-  //int test2DArray[2][3];
+  int testArray[3];
+  int test2DArray[2][3];
   struct globalstruct* test;
 };
 
@@ -600,7 +600,6 @@ void fixRegisterInitialization();
 // -----------------------------------------------------------------
 // --------------------------- COMPILER ----------------------------
 // -----------------------------------------------------------------
-void printSymbolTable();
 void printSymbolCount();
 void selfie_compile();
 
@@ -4195,50 +4194,7 @@ int checkForSTRUCTPOINTER_T(int type) {
 }
 
 
-//Von allex
-void printSymbolTable() {
-  int* entry;
-  int* field;
 
-  entry = global_symbol_table;
-  println();
-
-
-  print((int*) "Global Symboltable: ");
-  print((int*) " : ");
-  while ((int) entry != 0) {
-    if (getClass(entry) == VARIABLE) {
-      print((int*) getString(entry));
-      print((int*) ": ");
-      // print(itoa(getAddress(entry), string_buffer, 10, 0, 0));
-      // print((int*) ": ");
-      // print(itoa(getScope(entry), string_buffer, 10, 0, 0));
-      // print((int*) ": ");
-      // print(itoa(getSize(entry), string_buffer, 10, 0, 0));
-      print((int*) ": RefType: ");
-      //print(itoa(getRefType(entry), string_buffer, 10, 0, 0));
-      print((int*)getRefType(entry));
-      // print((int*) ": ");
-      // print(itoa(getNextField(entry), string_buffer, 10, 0, 0));
-      println();
-      if ( getNextField(entry) != (int*) 0){
-        field = getNextField(entry);
-        print((int*) "Printing Members: ");
-        println();
-        while(field != (int*) 0){
-          print((int*) getString(field));
-          println();
-          field = getNextField(field);
-        }
-      }
-    }
-
-    entry = getNextEntry(entry);
-  }
-  println();
-
-
-}
 
 
 
@@ -4293,8 +4249,6 @@ void gr_cstar() {
       if (symbol == SYM_IDENTIFIER) {
         variableOrProcedureName = identifier;
 
-        //printSymbolTable();
-
         sizeY = 0;
         sizeX = 0;
         fields = 0;
@@ -4335,7 +4289,6 @@ void gr_cstar() {
 
 
               if (symbol == SYM_LBRACKET) {//ARRAY in a struct
-                print((int*)"there's an array in the struct");
                 type = ARRAY_T;
                 getSymbol();
                 if (isLiteral()) {
@@ -4350,7 +4303,6 @@ void gr_cstar() {
                 getSymbol();
 
                 if (symbol == SYM_LBRACKET) {//ARRAY 2D in a struct
-                  print((int*)"there's a 2D array in the struct");
                   getSymbol();
                   if (isLiteral())
                     sizeX = literal;
@@ -7583,28 +7535,8 @@ void printSymbolCount() {
   }
 }
 
-// int x[32][2];
-//
-// void test() {
-//   int i;
-//   i = 0;
-//   while (i < 32) {
-//     x[i][1] = 0;
-//     i = i + 1;
-//   }
-// }
-//
-// void test1() {
-//   x[12][1] = 0;
-// }
-//
-// void test2() {
-//   x[12][1] = x[12][1] + 124657;
-// }
 
 int main(int argc, int* argv) {
-
-  //int i;
 
   initLibrary();
 
@@ -7622,16 +7554,6 @@ int main(int argc, int* argv) {
 
   print((int*)"This is knights Selfie");
   println();
-  // test();
-  // test1();
-  // test2();
-  // i = 0;
-  // while (i < 32) {
-  //   print(itoa(x[i][1], string_buffer, 10, 0, 0));
-  //   println();
-  //   i = i + 1;
-  // }
-  //printSymbolTable();
 
   //printSymbolCount();
 
