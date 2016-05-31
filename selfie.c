@@ -284,7 +284,6 @@ int SYM_RBRACKET     = 31; // ]
 int SYM_STRUCT       = 32; // struct
 
 int SYMBOLS[33][2]; // array of strings representing symbols
-void printSymbolCount();
 
 struct globalstruct {
   int variable;
@@ -540,6 +539,8 @@ int lookForStatement();
 int lookForType();
 int lookForVariableType();
 
+
+
 int checkForSTRUCTPOINTER_T(int type);
 void checkRbracket();
 void checkRbrace();
@@ -599,7 +600,8 @@ void fixRegisterInitialization();
 // -----------------------------------------------------------------
 // --------------------------- COMPILER ----------------------------
 // -----------------------------------------------------------------
-
+void printSymbolTable();
+void printSymbolCount();
 void selfie_compile();
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -4193,6 +4195,53 @@ int checkForSTRUCTPOINTER_T(int type) {
 }
 
 
+//Von allex
+void printSymbolTable() {
+  int* entry;
+  int* field;
+
+  entry = global_symbol_table;
+  println();
+
+
+  print((int*) "Global Symboltable: ");
+  print((int*) " : ");
+  while ((int) entry != 0) {
+    if (getClass(entry) == VARIABLE) {
+      print((int*) getString(entry));
+      print((int*) ": ");
+      // print(itoa(getAddress(entry), string_buffer, 10, 0, 0));
+      // print((int*) ": ");
+      // print(itoa(getScope(entry), string_buffer, 10, 0, 0));
+      // print((int*) ": ");
+      // print(itoa(getSize(entry), string_buffer, 10, 0, 0));
+      print((int*) ": RefType: ");
+      //print(itoa(getRefType(entry), string_buffer, 10, 0, 0));
+      print((int*)getRefType(entry));
+      // print((int*) ": ");
+      // print(itoa(getNextField(entry), string_buffer, 10, 0, 0));
+      println();
+      if ( getNextField(entry) != (int*) 0){
+        field = getNextField(entry);
+        print((int*) "Printing Members: ");
+        println();
+        while(field != (int*) 0){
+          print((int*) getString(field));
+          println();
+          field = getNextField(field);
+        }
+      }
+    }
+
+    entry = getNextEntry(entry);
+  }
+  println();
+
+
+}
+
+
+
 void gr_cstar() {
   int type;
   int* variableOrProcedureName;
@@ -4212,10 +4261,7 @@ void gr_cstar() {
   isArray = 0;
   constant = malloc(2 * SIZEOFINTSTAR);
   *constant = 0;
-  // print((int*)"am anfang von cstar is allocatedMemory:");
-  // println();
-  // print(itoa(allocatedMemory,string_buffer,10,0,0));
-  // println();
+
   while (symbol != SYM_EOF) {
     while (lookForType()) {
       syntaxErrorUnexpected();
@@ -4247,8 +4293,11 @@ void gr_cstar() {
       if (symbol == SYM_IDENTIFIER) {
         variableOrProcedureName = identifier;
 
+        //printSymbolTable();
+
         sizeY = 0;
         sizeX = 0;
+        fields = 0;
         *constant = 0;
         isArray = 0;
 
@@ -4313,7 +4362,7 @@ void gr_cstar() {
                   size = sizeY * sizeX;
                 }
 
-                fields = fields + size;//@todo: size passt hier? -1 ????
+                fields = fields + (size - 1);//@todo: size passt hier? -1 ????
 
               } else {
                 fields = fields + 1;
@@ -4333,7 +4382,6 @@ void gr_cstar() {
               syntaxErrorSymbol(SYM_IDENTIFIER);
               createSymbolTableEntry(GLOBAL_TABLE, (int*) "no variable name", lineNumber, VARIABLE, type, 0, -fields, 0, 0);
             }
-
             checkSemicolon();
           }
 
@@ -4862,6 +4910,9 @@ int copyStringToBinary(int* s, int baddr) {
   return next;
 }
 
+
+
+
 void emitGlobalsStrings() {
   int* entry;
 
@@ -4872,6 +4923,7 @@ void emitGlobalsStrings() {
   // allocate space for global variables and copy strings
   while ((int) entry != 0) {
     if (getClass(entry) == VARIABLE) {
+      if(getType(entry) != STRUCT_T) {
       storeBinary(binaryLength, getValue(entry));
       if(getSizeY(entry) == 0) {
         binaryLength = binaryLength + WORDSIZE;
@@ -4881,6 +4933,7 @@ void emitGlobalsStrings() {
         else
           binaryLength = binaryLength + getSizeY(entry) * getSizeX(entry) * WORDSIZE;
       }
+    }
     } else if (getClass(entry) == STRING)
       binaryLength = copyStringToBinary(getString(entry), binaryLength);
 
@@ -4891,6 +4944,10 @@ void emitGlobalsStrings() {
 
   allocatedMemory = 0;
 }
+
+
+
+
 
 void selfie_emit() {
   int fd;
@@ -7565,7 +7622,6 @@ int main(int argc, int* argv) {
 
   print((int*)"This is knights Selfie");
   println();
-
   // test();
   // test1();
   // test2();
@@ -7575,6 +7631,7 @@ int main(int argc, int* argv) {
   //   println();
   //   i = i + 1;
   // }
+  //printSymbolTable();
 
   //printSymbolCount();
 
