@@ -282,13 +282,13 @@ int SYM_RSHIFT       = 29; // >>
 int SYM_LBRACKET     = 30; // [
 int SYM_RBRACKET     = 31; // ]
 int SYM_STRUCT       = 32; // struct
+int SYM_STRUCTARROW  = 33; // ->
 
-int SYMBOLS[33][2]; // array of strings representing symbols
+int SYMBOLS[34][2]; // array of strings representing symbols
 
 struct globalstruct {
   int variable;
   int* pointerVar;
-  //todo: endlessloop with arrays
   int testArray[3];
   int test2DArray[2][3];
   struct globalstruct* test;
@@ -361,6 +361,7 @@ void initScanner() {
   SYMBOLS[SYM_LBRACKET][0]     = (int) "[";
   SYMBOLS[SYM_RBRACKET][0]     = (int) "]";
   SYMBOLS[SYM_STRUCT][0]       = (int) "struct";
+  SYMBOLS[SYM_STRUCTARROW][0]  = (int) "->";
 
 
   character = CHAR_EOF;
@@ -578,6 +579,7 @@ void gr_variable(int offset);
 void gr_initialization(int* name, int offset, int type);
 void gr_procedure(int* procedure, int returnType);
 void gr_cstar();
+int gr_struct();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1993,7 +1995,13 @@ int getSymbol() {
   } else if (character == CHAR_DASH) {
     getCharacter();
 
-    symbol = SYM_MINUS;
+    //STRUCT
+    if (character == CHAR_GT) {
+      symbol = SYM_STRUCTARROW;
+      getCharacter();
+    } else {
+      symbol = SYM_MINUS;
+    }
 
   } else if (character == CHAR_ASTERISK) {
     getCharacter();
@@ -2803,7 +2811,13 @@ int gr_factor(int* constant) {
       // reset return register
       emitIFormat(OP_ADDIU, REG_ZR, REG_V0, 0);
 
-    } else if (symbol == SYM_LBRACKET) {
+    } else if (symbol == SYM_STRUCTARROW) {
+      //struct
+      type = gr_struct();
+
+      emitIFormat(OP_LW, currentTemporary(), currentTemporary(), 0);
+
+    }else if (symbol == SYM_LBRACKET) {
       // array access
 
       getSymbol();
@@ -3745,7 +3759,12 @@ void gr_statement() {
         syntaxErrorSymbol(SYM_SEMICOLON);
 
       // identifier = expression
-    } else if (symbol == SYM_ASSIGN) {
+    }
+    //@todo
+    //else if (symbol == SYM_STRUCTARROW) {
+        //struct
+      //}
+        else if (symbol == SYM_ASSIGN) {
 
       entry = getVariable(variableOrProcedureName);
 
@@ -4193,7 +4212,13 @@ int checkForSTRUCTPOINTER_T(int type) {
   return type;
 }
 
+//@todo
+int gr_struct() {
+  int type;
+  type = 0;
 
+  return type;
+}
 
 
 
@@ -4201,7 +4226,6 @@ int checkForSTRUCTPOINTER_T(int type) {
 void gr_cstar() {
   int type;
   int* variableOrProcedureName;
-  int isArray;
   int size;
   int sizeY;
   int sizeX;
@@ -4214,7 +4238,6 @@ void gr_cstar() {
   fields = 0;
   sizeY = 0;
   sizeX = 0;
-  isArray = 0;
   constant = malloc(2 * SIZEOFINTSTAR);
   *constant = 0;
 
@@ -4253,7 +4276,6 @@ void gr_cstar() {
         sizeX = 0;
         fields = 0;
         *constant = 0;
-        isArray = 0;
 
         getSymbol();
 
@@ -4349,8 +4371,6 @@ void gr_cstar() {
 
           type = gr_shiftExpression(constant);
 
-          isArray = 1;
-
           if (*constant) {
             sizeY = *(constant + 1);
           } else {
@@ -4374,7 +4394,6 @@ void gr_cstar() {
 
               checkRbracket();
             }
-
           } else {
             syntaxErrorSymbol(SYM_RBRACKET);
           }
@@ -4396,8 +4415,6 @@ void gr_cstar() {
           // type identifier ";" global variable declaration
           if (symbol == SYM_SEMICOLON) {
 
-
-
             if (type == STRUCTPOINTER_T) {
               createSymbolTableEntry(GLOBAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, -allocatedMemory, 0, 0);
               setReferenceType(global_symbol_table, getSymbolTableEntry(variableOrProcedureName, VARIABLE));
@@ -4411,14 +4428,11 @@ void gr_cstar() {
           } else
             gr_initialization(variableOrProcedureName, -allocatedMemory, type);
         }
-
       } else
         syntaxErrorSymbol(SYM_IDENTIFIER);
     }
   }
 }
-
-
 
 // -----------------------------------------------------------------
 // ------------------------ MACHINE CODE LIBRARY -------------------
@@ -7524,7 +7538,7 @@ void printSymbolCount() {
   int i;
   i = 0;
 
-  while (i < 33) {
+  while (i < 34) {
     printSymbol(i);
     print((int*) " counted ");
     print(itoa(SYMBOLS[i][1], string_buffer, 10, 0, 0));
