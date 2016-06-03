@@ -445,7 +445,7 @@ int  getSizeX(int* entry) {
 int* getNextField(int* entry) {
   return (int*) * (entry + 10);
 }
-int* getRefType(int* entry)    {
+int* getReferenceType(int* entry)    {
   return (int*) * (entry + 11);
 }
 
@@ -545,6 +545,7 @@ int lookForVariableType();
 int checkForSTRUCTPOINTER_T(int type);
 void checkRbracket();
 void checkRbrace();
+void checkRparenthesis();
 void checkSemicolon();
 void save_temporaries();
 void restore_temporaries(int numberOfTemporaries);
@@ -2456,8 +2457,8 @@ int* putType(int type) {
     return (int*) "int";
   else if (type == INTSTAR_T)
     return (int*) "int*";
-    else if (type == ARRAY_T)
-      return (int*) "array_t";
+  else if (type == ARRAY_T)
+    return (int*) "array_t";
   else if (type == VOID_T)
     return (int*) "void";
   else
@@ -2745,6 +2746,18 @@ int gr_factor(int* constant) {
       else
         syntaxErrorSymbol(SYM_RPARENTHESIS);
 
+    } else if (symbol == SYM_STRUCT) {
+      hasCast = 1;
+
+      cast = gr_type();
+      if (symbol == SYM_IDENTIFIER)
+        getSymbol();
+      if (symbol == SYM_ASTERISK) {
+        cast = STRUCTPOINTER_T;
+        getSymbol();
+      }
+      checkRparenthesis();
+
       // not a cast: "(" expression ")"
     } else {
       type = gr_expression();
@@ -2817,7 +2830,7 @@ int gr_factor(int* constant) {
 
       emitIFormat(OP_LW, currentTemporary(), currentTemporary(), 0);
 
-    }else if (symbol == SYM_LBRACKET) {
+    } else if (symbol == SYM_LBRACKET) {
       // array access
 
       getSymbol();
@@ -2832,7 +2845,7 @@ int gr_factor(int* constant) {
       // variable access: identifier
 
       array = getVariable(variableOrProcedureName);
-      if(getType(array) == ARRAY_T) {
+      if (getType(array) == ARRAY_T) {
         talloc();
         emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), getAddress(array));
         emitRFormat(OP_SPECIAL, getScope(array), currentTemporary(), currentTemporary(), FCT_ADDU);
@@ -3389,7 +3402,7 @@ int gr_index(int* variableOrProcedureName) {
 
   array = getVariable(variableOrProcedureName);
 
-  if(getAddress(array) > 0) {
+  if (getAddress(array) > 0) {
 
     load_variable(variableOrProcedureName);
 
@@ -3760,15 +3773,29 @@ void gr_statement() {
 
       // identifier = expression
     }
-    //@todo
-    //else if (symbol == SYM_STRUCTARROW) {
+    else if (symbol == SYM_STRUCTARROW) {
         //struct
-      //}
-        else if (symbol == SYM_ASSIGN) {
+        ltype = gr_struct();
+
+        if (symbol == SYM_ASSIGN)
+          getSymbol();
+        else
+          syntaxErrorSymbol(SYM_ASSIGN);
+
+        emitIFormat(OP_SW, previousTemporary(), currentTemporary(), 0);
+
+        tfree(2);
+
+        if (symbol == SYM_SEMICOLON)
+          getSymbol();
+        else
+          syntaxErrorSymbol(SYM_SEMICOLON);
+
+    } else if (symbol == SYM_ASSIGN) {
 
       entry = getVariable(variableOrProcedureName);
 
-      if(isArray == 0) {
+      if (isArray == 0) {
 
         ltype = getType(entry);
 
@@ -3854,7 +3881,9 @@ void gr_variable(int offset) {
   int type;
   int sizeY;
   int sizeX;
+  int* referenceType;
   int* constant;
+  int* firstIdentifier;
 
   sizeY = 0;
   sizeX = 0;
@@ -3866,8 +3895,12 @@ void gr_variable(int offset) {
   type = gr_type();
 
   if (symbol == SYM_IDENTIFIER) {
+    firstIdentifier = identifier;
+    getSymbol();
+    if (symbol == SYM_ASTERISK)
+      type = STRUCTPOINTER_T;
 
-      getSymbol();
+    type = checkForSTRUCTPOINTER_T(type);
 
     if (symbol == SYM_LBRACKET) {
 
@@ -3901,7 +3934,7 @@ void gr_variable(int offset) {
             else
               syntaxErrorUnexpected();
 
-              getSymbol();
+            getSymbol();
           }
         }
       } else {
@@ -3910,13 +3943,22 @@ void gr_variable(int offset) {
     }
 
     if (sizeY != 0) {
-      if(sizeX != 0)
-        offset = offset - (sizeY * sizeX - 1) * WORDSIZE;
+      if (sizeX != 0)
+        offset = offset - (sizeY * sizeX - 1) * WORDSIZE;//@todoteam: -1 sicher?
       else
         offset = offset - (sizeY - 1) * WORDSIZE;
     }
 
-    createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, sizeY, sizeX);
+    if (type == STRUCTPOINTER_T) {
+      print((int*)"ein STRUCTPOINTER wird gefunden in der main");
+      println();
+      println();
+      createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, sizeY, sizeX);
+      referenceType = searchSymbolTable(global_symbol_table, firstIdentifier, VARIABLE);
+      setReferenceType(local_symbol_table, getString(referenceType));
+    } else {
+      createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, sizeY, sizeX);
+    }
 
   } else {
     syntaxErrorSymbol(SYM_IDENTIFIER);
@@ -3924,6 +3966,8 @@ void gr_variable(int offset) {
     createSymbolTableEntry(LOCAL_TABLE, (int*) "missing variable name", lineNumber, VARIABLE, type, 0, offset, 0, 0);
   }
 }
+
+
 
 void gr_initialization(int* name, int offset, int type) {
   int actualLineNumber;
@@ -4091,14 +4135,14 @@ void gr_procedure(int* procedure, int returnType) {
 
     localVariables = 0;
 
-    while (symbol == SYM_INT) {
+    while (lookForVariableType()) {
       localVariables = localVariables + 1;
 
       gr_variable(-localVariables * WORDSIZE);
 
       entry = getSymbolTableEntry(identifier, VARIABLE);
 
-      if (getType(entry) == ARRAY_T){
+      if (getType(entry) == ARRAY_T) {
         if (getSizeX(entry) != 0)
           localVariables = localVariables + getSizeY(entry) * getSizeX(entry) - 1;
         else
@@ -4179,21 +4223,28 @@ int lookForVariableType() {
     return 0;
 }
 
-void checkRbracket(){
+void checkRbracket() {
   if (symbol != SYM_RBRACKET)
     syntaxErrorSymbol(SYM_RBRACKET);
 
   getSymbol();
 }
 
-void checkRbrace(){
+void checkRbrace() {
   if (symbol != SYM_RBRACE)
     syntaxErrorSymbol(SYM_RBRACE);
 
   getSymbol();
 }
 
-void checkSemicolon(){
+void checkRparenthesis() {
+  if (symbol != SYM_RPARENTHESIS)
+    syntaxErrorSymbol(SYM_RPARENTHESIS);
+
+  getSymbol();
+}
+
+void checkSemicolon() {
   if (symbol != SYM_SEMICOLON)
     syntaxErrorSymbol(SYM_SEMICOLON);
 
@@ -4214,8 +4265,29 @@ int checkForSTRUCTPOINTER_T(int type) {
 
 //@todo
 int gr_struct() {
-  int type;
-  type = 0;
+  int  type;
+  int* entry;
+  int* variables;
+
+  //load address of struct
+  type = load_variable(identifier);
+  entry = getVariable(identifier);
+
+  //find reference type of that struct
+  entry = getReferenceType(entry);
+  getSymbol();
+
+  variables = searchSymbolTable(global_symbol_table, entry, VARIABLE);
+  entry = searchStructTable(variables, identifier, VARIABLE);
+
+  //load offset of member
+  load_integer(getAddress(entry) * (-1));
+  emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
+
+  emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
+  tfree(1);
+
+  getSymbol();
 
   return type;
 }
@@ -4400,12 +4472,12 @@ void gr_cstar() {
           checkSemicolon();
 
 
-              if (sizeX != 0)
-                allocatedMemory = allocatedMemory + (sizeY * sizeX) * WORDSIZE;
-              else
-                allocatedMemory = allocatedMemory + (sizeY - 1) * WORDSIZE;
+          if (sizeX != 0)
+            allocatedMemory = allocatedMemory + (sizeY * sizeX) * WORDSIZE;
+          else
+            allocatedMemory = allocatedMemory + (sizeY - 1) * WORDSIZE;
 
-            createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, type, 0, -allocatedMemory, sizeY, sizeX);
+          createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, type, 0, -allocatedMemory, sizeY, sizeX);
 
         } else if (symbol == SYM_LPARENTHESIS)// type identifier "(" procedure declaration or definition
           gr_procedure(variableOrProcedureName, type);
@@ -4889,17 +4961,17 @@ void emitGlobalsStrings() {
   // allocate space for global variables and copy strings
   while ((int) entry != 0) {
     if (getClass(entry) == VARIABLE) {
-      if(getType(entry) != STRUCT_T) {
-      storeBinary(binaryLength, getValue(entry));
-      if(getSizeY(entry) == 0) {
-        binaryLength = binaryLength + WORDSIZE;
-      } else {
-        if(getSizeX(entry) == 0)
-          binaryLength = binaryLength + getSizeY(entry) * WORDSIZE;
-        else
-          binaryLength = binaryLength + getSizeY(entry) * getSizeX(entry) * WORDSIZE;
+      if (getType(entry) != STRUCT_T) {
+        storeBinary(binaryLength, getValue(entry));
+        if (getSizeY(entry) == 0) {
+          binaryLength = binaryLength + WORDSIZE;
+        } else {
+          if (getSizeX(entry) == 0)
+            binaryLength = binaryLength + getSizeY(entry) * WORDSIZE;
+          else
+            binaryLength = binaryLength + getSizeY(entry) * getSizeX(entry) * WORDSIZE;
+        }
       }
-    }
     } else if (getClass(entry) == STRING)
       binaryLength = copyStringToBinary(getString(entry), binaryLength);
 
@@ -7549,8 +7621,12 @@ void printSymbolCount() {
   }
 }
 
-
+//@todo
+//@todoteam
 int main(int argc, int* argv) {
+
+  struct globalstruct* teststruct;
+
 
   initLibrary();
 
@@ -7568,6 +7644,16 @@ int main(int argc, int* argv) {
 
   print((int*)"This is knights Selfie");
   println();
+
+
+    print((int*) "Structs:");
+    println();
+
+    teststruct = (struct globalstruct*) malloc(34*SIZEOFINT);
+
+  //  teststruct->variable = 1;
+
+
 
   //printSymbolCount();
 
