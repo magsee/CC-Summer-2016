@@ -142,6 +142,8 @@ int CHAR_EXCLAMATION  = '!';
 int CHAR_PERCENTAGE   = '%';
 int CHAR_SINGLEQUOTE  = 39; // ASCII code 39 = '
 int CHAR_DOUBLEQUOTE  = '"';
+int CHAR_AMPERSAND    = '&';
+int CHAR_VERTICALLINE = '|';
 
 int SIZEOFINT     = 4; // must be the same as WORDSIZE
 int SIZEOFINTSTAR = 4; // must be the same as WORDSIZE
@@ -283,8 +285,11 @@ int SYM_LBRACKET     = 30; // [
 int SYM_RBRACKET     = 31; // ]
 int SYM_STRUCT       = 32; // struct
 int SYM_STRUCTARROW  = 33; // ->
+int SYM_OR           = 34; // ||
+int SYM_AND          = 35; // &&
+int SYM_NOT          = 36; // !
 
-int SYMBOLS[34][2]; // array of strings representing symbols
+int SYMBOLS[37][2]; // array of strings representing symbols
 
 struct globalstruct {
   int variable;
@@ -362,13 +367,16 @@ void initScanner() {
   SYMBOLS[SYM_RBRACKET][0]     = (int) "]";
   SYMBOLS[SYM_STRUCT][0]       = (int) "struct";
   SYMBOLS[SYM_STRUCTARROW][0]  = (int) "->";
+  SYMBOLS[SYM_OR][0]           = (int) "||";
+  SYMBOLS[SYM_AND][0]          = (int) "&&";
+  SYMBOLS[SYM_NOT][0]          = (int) "!";
 
 
   character = CHAR_EOF;
   symbol    = SYM_EOF;
 
   i = 0;
-  while (i < 32) {
+  while (i < 37) {
     SYMBOLS[i][1] = 0;
     i = i + 1;
   }
@@ -2097,6 +2105,14 @@ int getSymbol() {
 
     symbol = SYM_MOD;
 
+  } else if (character == CHAR_AMPERSAND) {
+    getCharacter();
+
+    symbol = SYM_AND;
+  } else if (character == CHAR_VERTICALLINE) {
+    getCharacter();
+
+    symbol = SYM_OR;
   } else {
     printLineNumber((int*) "error", lineNumber);
     print((int*) "found unknown character ");
@@ -3884,7 +3900,9 @@ void gr_variable(int offset) {
   int* referenceType;
   int* constant;
   int* firstIdentifier;
+  int size;
 
+  size = 0;
   sizeY = 0;
   sizeX = 0;
 
@@ -3942,15 +3960,21 @@ void gr_variable(int offset) {
       }
     }
 
-    if (sizeY != 0) {
-      if (sizeX != 0)
-        offset = offset - (sizeY * sizeX - 1) * WORDSIZE;//@todoteam: -1 sicher?
-      else
-        offset = offset - (sizeY - 1) * WORDSIZE;
-    }
+      if(sizeY != 0){
+        if(sizeX != 0)
+          size = sizeY * sizeX - 1;
+        else
+          size = sizeY - 1;
+      }
+
+      //if(offset < 0)//@todo ist die zeile noetig?
+        offset = offset - size * WORDSIZE;
+
 
     if (type == STRUCTPOINTER_T) {
-      print((int*)"ein STRUCTPOINTER wird gefunden in der main");
+      print((int*)"der STRUCTPOINTER ");
+      print((int*)identifier);
+      print((int*)" wurde gefunden");
       println();
       println();
       createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, sizeY, sizeX);
@@ -7610,7 +7634,7 @@ void printSymbolCount() {
   int i;
   i = 0;
 
-  while (i < 34) {
+  while (i < 37) {
     printSymbol(i);
     print((int*) " counted ");
     print(itoa(SYMBOLS[i][1], string_buffer, 10, 0, 0));
@@ -7651,7 +7675,7 @@ int main(int argc, int* argv) {
 
     teststruct = (struct globalstruct*) malloc(34*SIZEOFINT);
 
-  //  teststruct->variable = 1;
+   //teststruct->variable = 1;
 
 
 
