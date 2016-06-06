@@ -47,7 +47,13 @@ simpleExpression = [ "-" ] term { ( "+" | "-" ) term } .
 
 shiftExpression = simpleExpression { ( "<<" | ">>" ) simpleExpression }.
 
-expression       = shiftExpression [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) shiftExpression ] .
+compareExpression = shiftExpression [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) shiftExpression ].
+
+andExpression  = compareExpression [ ( "&&" ) compareExpression ].
+
+expression = andExpression [ ( "||" ) andExpression ].
+
+
 
 while            = "while" "(" expression ")"
                              ( statement |
