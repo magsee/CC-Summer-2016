@@ -105,6 +105,7 @@ void putCharacter(int character);
 
 void print(int* s);
 void println();
+void printaln(int* s);
 
 void printCharacter(int character);
 void printString(int* s);
@@ -537,6 +538,7 @@ void resetSymbolTables() {
 // -----------------------------------------------------------------
 
 int isNotRbraceOrEOF();
+int isANDorOR();
 int isExpression();
 int isLiteral();
 int isStarOrDivOrModulo();
@@ -581,6 +583,7 @@ int  gr_expression();
 int  gr_index(int* variableOrProcedureName);
 void gr_while();
 void gr_if();
+void gr_boolean();
 void gr_return(int returnType);
 void gr_statement();
 int  gr_type();
@@ -1621,6 +1624,11 @@ void print(int* s) {
   }
 }
 
+void printaln(int* s) {
+  print(s);
+  println();
+}
+
 void println() {
   putCharacter(CHAR_LF);
 }
@@ -2077,7 +2085,7 @@ int getSymbol() {
       symbol = SYM_LT;
 
   } else if (character == CHAR_GT) {
-    getCharacter();
+    getCharacter();//
 
     if (character == CHAR_EQUAL) {
       getCharacter();
@@ -2248,6 +2256,15 @@ int isNotRbraceOrEOF() {
     return 0;
   else
     return 1;
+}
+
+int isANDorOR(){
+  if(symbol == SYM_AND)
+    return 1;
+  else if(symbol == SYM_OR)
+    return 1;
+  else
+    return 0;
 }
 
 int isExpression() {
@@ -3540,6 +3557,12 @@ void gr_while() {
   // assert: allocatedTemporaries == 0
 }
 
+void gr_boolean(){
+
+
+
+}
+
 void gr_if() {
   int brForwardToElseOrEnd;
   int brForwardToEnd;
@@ -3972,9 +3995,11 @@ void gr_variable(int offset) {
 
 
     if (type == STRUCTPOINTER_T) {
-      print((int*)"der STRUCTPOINTER ");
-      print((int*)identifier);
-      print((int*)" wurde gefunden");
+      // print((int*)"der STRUCTPOINTER ");
+      // print((int*)identifier);
+      // print((int*)" wurde gefunden");
+      //print(itoa())
+      //print((int*));
       println();
       println();
       createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, sizeY, sizeX);
@@ -7649,7 +7674,7 @@ void printSymbolCount() {
 //@todoteam
 int main(int argc, int* argv) {
 
-  struct globalstruct* teststruct;
+  //struct globalstruct* teststruct;
 
 
   initLibrary();
@@ -7669,13 +7694,17 @@ int main(int argc, int* argv) {
   print((int*)"This is knights Selfie");
   println();
 
+  // print((int*) "Structs:");
+  // println();
 
-    print((int*) "Structs:");
-    println();
-
-    teststruct = (struct globalstruct*) malloc(34*SIZEOFINT);
-
-   //teststruct->variable = 1;
+  // teststruct = (struct globalstruct*) malloc(34*SIZEOFINT);
+  //
+  // print((int*)"teststruct: ");
+  // println();
+  // print(itoa(teststruct,string_buffer,10,0,0));
+  // println();
+  //
+  // teststruct->variable = 1;
 
 
 
