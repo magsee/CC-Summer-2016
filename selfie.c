@@ -105,7 +105,7 @@ void putCharacter(int character);
 
 void print(int* s);
 void println();
-void printaln(int* s);
+void printaln(int* s, int a);
 
 void printCharacter(int character);
 void printString(int* s);
@@ -1624,8 +1624,13 @@ void print(int* s) {
   }
 }
 
-void printaln(int* s) {
-  print(s);
+void printaln(int* s, int a) {
+  if(a == 0)
+    print((int*)s);
+  else if(a == 1)
+    print(itoa((int)s,string_buffer,10,0,0));
+  else
+    print((int*)"wrong print input");
   println();
 }
 
@@ -3558,7 +3563,7 @@ void gr_while() {
 }
 
 void gr_boolean(){
-
+  gr_expression();
 
 
 }
@@ -3576,7 +3581,7 @@ void gr_if() {
     if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      gr_expression();
+      gr_boolean();
 
       // if the "if" case is not true, we jump to "else" (if provided)
       brForwardToElseOrEnd = binaryLength;
@@ -7674,7 +7679,7 @@ void printSymbolCount() {
 //@todoteam
 int main(int argc, int* argv) {
 
-  //struct globalstruct* teststruct;
+  struct globalstruct* teststruct;
 
 
   initLibrary();
@@ -7697,7 +7702,7 @@ int main(int argc, int* argv) {
   // print((int*) "Structs:");
   // println();
 
-  // teststruct = (struct globalstruct*) malloc(34*SIZEOFINT);
+   teststruct = (struct globalstruct*) malloc(34*SIZEOFINT);
   //
   // print((int*)"teststruct: ");
   // println();
@@ -7706,7 +7711,7 @@ int main(int argc, int* argv) {
   //
   // teststruct->variable = 1;
 
-
+  //printaln((int*)"testtest",0);
 
   //printSymbolCount();
 
