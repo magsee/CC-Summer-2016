@@ -41,17 +41,17 @@ factor           = [ cast ]
                       literal | constant |
                       """ { ascii_character } """ ) .
 
-term             = factor { ( "*" | "/" | "%" ) factor } .
+term              = factor { ( "*" | "/" | "%" ) factor } .
 
-simpleExpression = [ "-" ] term { ( "+" | "-" ) term } .
+simpleExpression  = [ "-" ] term { ( "+" | "-" ) term } .
 
-shiftExpression = simpleExpression { ( "<<" | ">>" ) simpleExpression }.
+shiftExpression   = simpleExpression { ( "<<" | ">>" ) simpleExpression }.
 
 compareExpression = shiftExpression [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) shiftExpression ].
 
-andExpression  = compareExpression [ ( "&&" ) compareExpression ].
+andExpression     = compareExpression [ ( "&&" ) compareExpression ].
 
-expression = andExpression [ ( "||" ) andExpression ].
+expression        = andExpression [ ( "||" ) andExpression ].
 
 
 

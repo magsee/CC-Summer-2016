@@ -1819,10 +1819,7 @@ int isCharacterLetter() {
 }
 
 int isCharacterDigit() {
-  //if(1 & 1){}
-    //printaln((int*)"1 & 1 still working",0);
-  //else
-    //printaln((int*)"1 & 1 isn't working",0);
+
 
   // if (character >= '0')
   //   if (character <= '9')
@@ -2135,8 +2132,10 @@ int getSymbol() {
       }
   } else if (character == CHAR_VERTICALLINE) {
     getCharacter();
-
-    symbol = SYM_OR;
+    if(character == CHAR_VERTICALLINE){
+      symbol = SYM_OR;
+      getCharacter();
+    }
   } else {
     printLineNumber((int*) "error", lineNumber);
     print((int*) "found unknown character ");
@@ -3487,27 +3486,27 @@ int gr_andExpression(int* fixupBoolean){
 // ||
 int gr_expression(int* fixupBoolean){
   int ltype;
-  // int rtype;
-  // int* head;
+  int rtype;
+  int* head;
 
 
   ltype = gr_andExpression(fixupBoolean);
 
-  // if (symbol == SYM_OR) {
-  //
-  //   *(fixupBoolean + 1) = (int) manageList(binaryLength);
-  //   head = (int*) * (fixupBoolean + 1);
-  //   emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 0);
-  // }
-  //
-  // while (symbol == SYM_OR) {
-  //   getSymbol();
-  //   rtype = gr_andExpression(fixupBoolean);
-  //
-  //   *(head + 1) = (int) manageList(binaryLength);
-  //   head = (int*) * (head + 1);
-  //   emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 0);
-  // }
+  if (symbol == SYM_OR) {
+
+    *(fixupBoolean + 1) = (int) manageList(binaryLength);
+    head = (int*) * (fixupBoolean + 1);
+    emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 0);
+  }
+
+  while (symbol == SYM_OR) {
+    getSymbol();
+    rtype = gr_andExpression(fixupBoolean);
+
+    *(head + 1) = (int) manageList(binaryLength);
+    head = (int*) * (head + 1);
+    emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 0);
+  }
 
 
   return ltype;
@@ -3677,15 +3676,15 @@ void gr_if() {
       if (symbol == SYM_RPARENTHESIS) {
         getSymbol();
 
-        // if (*(fixupBoolean + 1) != 0) {
-        //   head = (int*) * (fixupBoolean + 1);
-        //   while (*(head + 1) != 0) {
-        //     fixup_relative(*head);
-        //     head = (int*) * (head + 1);
-        //     tfree(1);
-        //   }
-        //   fixup_relative(*head);
-        // }
+        if (*(fixupBoolean + 1) != 0) {
+          head = (int*) * (fixupBoolean + 1);
+          while (*(head + 1) != 0) {
+            fixup_relative(*head);
+            head = (int*) * (head + 1);
+            //tfree(1);
+          }
+          fixup_relative(*head);
+        }
 
         // zero or more statements: { statement }
         if (symbol == SYM_LBRACE) {
@@ -7822,6 +7821,10 @@ int main(int argc, int* argv) {
 
   if (1 && 1) {
     printaln((int*) "1 && 1 is working",0);
+  }
+
+  if (1 || 1){
+    printaln((int*)"1 || 1 is working",0);
   }
 
 
