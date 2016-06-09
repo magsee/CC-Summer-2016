@@ -292,15 +292,15 @@ int SYM_NOT          = 36; // !
 
 int SYMBOLS[37][2]; // array of strings representing symbols
 
-struct globalstruct {
-  int variable;
-  int* pointerVar;
-  int testArray[3];
-  int test2DArray[2][3];
-  struct globalstruct* test;
-};
-
-struct globalstruct* test;
+// struct globalstruct {
+//   int variable;
+//   int* pointerVar;
+//   int testArray[3];
+//   int test2DArray[2][3];
+//   struct globalstruct* test;
+// };
+//
+// struct globalstruct* test;
 
 
 int maxIdentifierLength = 64; // maximum number of characters in an identifier
@@ -551,7 +551,7 @@ int lookForType();
 int lookForVariableType();
 
 
-
+//int* manageList(int input);
 int checkForSTRUCTPOINTER_T(int type);
 void checkRbracket();
 void checkRbrace();
@@ -579,11 +579,12 @@ int  gr_factor(int* constant);
 int  gr_term(int* constant);
 int  gr_simpleExpression(int* constant);
 int  gr_shiftExpression(int* constant);
-int  gr_expression();
+int  gr_compareExpression();
+int  gr_andExpression(int* fixupBoolean);
+int  gr_expression(int* fixupBoolean);
 int  gr_index(int* variableOrProcedureName);
 void gr_while();
 void gr_if();
-void gr_boolean();
 void gr_return(int returnType);
 void gr_statement();
 int  gr_type();
@@ -1818,11 +1819,19 @@ int isCharacterLetter() {
 }
 
 int isCharacterDigit() {
-  if (character >= '0')
-    if (character <= '9')
-      return 1;
-    else
-      return 0;
+  //if(1 & 1){}
+    //printaln((int*)"1 & 1 still working",0);
+  //else
+    //printaln((int*)"1 & 1 isn't working",0);
+
+  // if (character >= '0')
+  //   if (character <= '9')
+  //     return 1;
+  //   else
+  //     return 0;
+
+  if(character >= '0' && character <= '9')
+    return 1;
   else
     return 0;
 }
@@ -2120,8 +2129,10 @@ int getSymbol() {
 
   } else if (character == CHAR_AMPERSAND) {
     getCharacter();
-
-    symbol = SYM_AND;
+      if(character == CHAR_AMPERSAND){
+        symbol = SYM_AND;
+        getCharacter();
+      }
   } else if (character == CHAR_VERTICALLINE) {
     getCharacter();
 
@@ -2681,6 +2692,10 @@ int gr_call(int* procedure) {
   int* entry;
   int numberOfTemporaries;
   int type;
+  int* fixupBoolean;
+
+  fixupBoolean = malloc(2 * SIZEOFINTSTAR);
+
 
   // assert: n = allocatedTemporaries
 
@@ -2697,7 +2712,7 @@ int gr_call(int* procedure) {
   // assert: allocatedTemporaries == 0
 
   if (isExpression()) {
-    gr_expression();
+    gr_expression(fixupBoolean);
 
     // TODO: check if types/number of parameters is correct
 
@@ -2710,7 +2725,7 @@ int gr_call(int* procedure) {
     while (symbol == SYM_COMMA) {
       getSymbol();
 
-      gr_expression();
+      gr_expression(fixupBoolean);
 
       // push more parameters onto stack
       emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
@@ -2798,7 +2813,7 @@ int gr_factor(int* constant) {
 
       // not a cast: "(" expression ")"
     } else {
-      type = gr_expression();
+      type = gr_expression(constant);
 
       if (symbol == SYM_RPARENTHESIS)
         getSymbol();
@@ -2825,7 +2840,7 @@ int gr_factor(int* constant) {
     } else if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      type = gr_expression();
+      type = gr_expression(constant);
 
       if (symbol == SYM_RPARENTHESIS)
         getSymbol();
@@ -2923,7 +2938,7 @@ int gr_factor(int* constant) {
   } else if (symbol == SYM_LPARENTHESIS) {
     getSymbol();
 
-    type = gr_expression();
+    type = gr_expression(constant);
 
     if (symbol == SYM_RPARENTHESIS)
       getSymbol();
@@ -3320,14 +3335,13 @@ int gr_shiftExpression(int* constant) {
   return ltype;
 }
 
-int gr_expression() {
+int gr_compareExpression() {
   int ltype;
   int operatorSymbol;
   int rtype;
-
   int* constant;
 
-  constant = malloc(2 * SIZEOFINTSTAR);
+  constant = malloc(2 * SIZEOFINT);
 
   // assert: n = allocatedTemporaries
 
@@ -3433,10 +3447,79 @@ int gr_expression() {
   return ltype;
 }
 
+int* manageList(int input) {
+  int* entry;
+  entry = malloc(SIZEOFINT + SIZEOFINTSTAR);
+
+  *entry = input;
+  *(entry + 1) = 0;
+  return entry;
+}
+
+// &&
+int gr_andExpression(int* fixupBoolean){
+  int ltype;
+  int rtype;
+  int* head;
+
+  ltype = gr_compareExpression();
+
+  if(symbol == SYM_AND){
+
+    *(fixupBoolean) = (int) manageList(binaryLength);
+    head = (int*) * (fixupBoolean);
+    emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 0);
+  }
+
+  while (symbol == SYM_AND) {
+    getSymbol();
+    rtype = gr_compareExpression();
+
+    *(head + 1) = (int) manageList(binaryLength);
+    head = (int*) * (head + 1);
+    emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 0);
+  }
+
+
+  return ltype;
+}
+
+// ||
+int gr_expression(int* fixupBoolean){
+  int ltype;
+  // int rtype;
+  // int* head;
+
+
+  ltype = gr_andExpression(fixupBoolean);
+
+  // if (symbol == SYM_OR) {
+  //
+  //   *(fixupBoolean + 1) = (int) manageList(binaryLength);
+  //   head = (int*) * (fixupBoolean + 1);
+  //   emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 0);
+  // }
+  //
+  // while (symbol == SYM_OR) {
+  //   getSymbol();
+  //   rtype = gr_andExpression(fixupBoolean);
+  //
+  //   *(head + 1) = (int) manageList(binaryLength);
+  //   head = (int*) * (head + 1);
+  //   emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 0);
+  // }
+
+
+  return ltype;
+}
+
 int gr_index(int* variableOrProcedureName) {
 
   int type;
   int* array;
+  int* fixupBoolean;
+
+  fixupBoolean = malloc(2 * SIZEOFINTSTAR);
 
   array = getVariable(variableOrProcedureName);
 
@@ -3451,7 +3534,7 @@ int gr_index(int* variableOrProcedureName) {
 
   }
 
-  type = gr_expression();
+  type = gr_expression(fixupBoolean);
 
   if (type == INT_T) {
 
@@ -3465,7 +3548,7 @@ int gr_index(int* variableOrProcedureName) {
 
         getSymbol();
 
-        type = gr_expression();
+        type = gr_expression(fixupBoolean);
 
         emitLeftShiftBy(2); //WORDSIZE
         talloc();
@@ -3500,7 +3583,9 @@ int gr_index(int* variableOrProcedureName) {
 void gr_while() {
   int brBackToWhile;
   int brForwardToEnd;
+  int* fixupBoolean;
 
+  fixupBoolean = malloc(2 * SIZEOFINTSTAR);
   // assert: allocatedTemporaries == 0
 
   brBackToWhile = binaryLength;
@@ -3514,7 +3599,7 @@ void gr_while() {
     if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      gr_expression();
+      gr_expression(fixupBoolean);
 
       // do not know where to branch, fixup later
       brForwardToEnd = binaryLength;
@@ -3562,18 +3647,17 @@ void gr_while() {
   // assert: allocatedTemporaries == 0
 }
 
-void gr_boolean(){
-  gr_expression();
-
-
-}
 
 void gr_if() {
   int brForwardToElseOrEnd;
   int brForwardToEnd;
+  int* head;
+  int* fixupBoolean;
 
+  fixupBoolean = malloc(2 * SIZEOFINTSTAR);
   // assert: allocatedTemporaries == 0
-
+  *(fixupBoolean) = 0;
+  *(fixupBoolean + 1) = 0;
   // if ( expression )
   if (symbol == SYM_IF) {
     getSymbol();
@@ -3581,7 +3665,7 @@ void gr_if() {
     if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      gr_boolean();
+      gr_expression(fixupBoolean);
 
       // if the "if" case is not true, we jump to "else" (if provided)
       brForwardToElseOrEnd = binaryLength;
@@ -3592,6 +3676,16 @@ void gr_if() {
 
       if (symbol == SYM_RPARENTHESIS) {
         getSymbol();
+
+        // if (*(fixupBoolean + 1) != 0) {
+        //   head = (int*) * (fixupBoolean + 1);
+        //   while (*(head + 1) != 0) {
+        //     fixup_relative(*head);
+        //     head = (int*) * (head + 1);
+        //     tfree(1);
+        //   }
+        //   fixup_relative(*head);
+        // }
 
         // zero or more statements: { statement }
         if (symbol == SYM_LBRACE) {
@@ -3623,6 +3717,16 @@ void gr_if() {
           // if the "if" case was not true, we jump here
           fixup_relative(brForwardToElseOrEnd);
 
+          if (*(fixupBoolean) != 0) {
+            head = (int*) * (fixupBoolean);
+            while (*(head + 1) != 0) {
+              fixup_relative(*head);
+              head = (int*) * (head + 1);
+              //tfree(1);
+            }
+            fixup_relative(*head);
+          }
+
           // zero or more statements: { statement }
           if (symbol == SYM_LBRACE) {
             getSymbol();
@@ -3647,6 +3751,17 @@ void gr_if() {
         } else
           // if the "if" case was not true, we jump here
           fixup_relative(brForwardToElseOrEnd);
+
+          if (*(fixupBoolean) != 0) {
+            head = (int*) * (fixupBoolean);
+            while (*(head + 1) != 0) {
+              fixup_relative(*head);
+              head = (int*) * (head + 1);
+              //tfree(1);
+            }
+            fixup_relative(*head);
+          }
+
       } else
         syntaxErrorSymbol(SYM_RPARENTHESIS);
     } else
@@ -3659,6 +3774,9 @@ void gr_if() {
 
 void gr_return(int returnType) {
   int type;
+  int* fixupBoolean;
+
+  fixupBoolean = malloc(2 * SIZEOFINTSTAR);
 
   // assert: allocatedTemporaries == 0
 
@@ -3669,7 +3787,7 @@ void gr_return(int returnType) {
 
   // optional: expression
   if (symbol != SYM_SEMICOLON) {
-    type = gr_expression();
+    type = gr_expression(fixupBoolean);
 
     if (returnType == VOID_T)
       typeWarning(type, returnType);
@@ -3699,7 +3817,9 @@ void gr_statement() {
   int* variableOrProcedureName;
   int* entry;
   int isArray;
+  int* fixupBoolean;
 
+  fixupBoolean = malloc(2 * SIZEOFINTSTAR);
   isArray = 0;
 
   // assert: allocatedTemporaries == 0;
@@ -3731,7 +3851,7 @@ void gr_statement() {
       if (symbol == SYM_ASSIGN) {
         getSymbol();
 
-        rtype = gr_expression();
+        rtype = gr_expression(fixupBoolean);
 
         if (rtype != INT_T)
           typeWarning(INT_T, rtype);
@@ -3751,7 +3871,7 @@ void gr_statement() {
     } else if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      ltype = gr_expression();
+      ltype = gr_expression(fixupBoolean);
 
       if (ltype != INTSTAR_T)
         typeWarning(INTSTAR_T, ltype);
@@ -3763,7 +3883,7 @@ void gr_statement() {
         if (symbol == SYM_ASSIGN) {
           getSymbol();
 
-          rtype = gr_expression();
+          rtype = gr_expression(fixupBoolean);
 
           if (rtype != INT_T)
             typeWarning(INT_T, rtype);
@@ -3847,7 +3967,7 @@ void gr_statement() {
 
       getSymbol();
 
-      rtype = gr_expression();
+      rtype = gr_expression(fixupBoolean);
 
       if (ltype != rtype)
         typeWarning(ltype, rtype);
@@ -7679,7 +7799,8 @@ void printSymbolCount() {
 //@todoteam
 int main(int argc, int* argv) {
 
-  struct globalstruct* teststruct;
+  // int a;
+  // struct globalstruct* teststruct;
 
 
   initLibrary();
@@ -7699,10 +7820,15 @@ int main(int argc, int* argv) {
   print((int*)"This is knights Selfie");
   println();
 
+  if (1 && 1) {
+    printaln((int*) "1 && 1 is working",0);
+  }
+
+
   // print((int*) "Structs:");
   // println();
 
-   teststruct = (struct globalstruct*) malloc(34*SIZEOFINT);
+  //teststruct = (struct globalstruct*) malloc(34*SIZEOFINT);
   //
   // print((int*)"teststruct: ");
   // println();
@@ -7711,7 +7837,6 @@ int main(int argc, int* argv) {
   //
   // teststruct->variable = 1;
 
-  //printaln((int*)"testtest",0);
 
   //printSymbolCount();
 
