@@ -1626,10 +1626,10 @@ void print(int* s) {
 }
 
 void printaln(int* s, int a) {
-  if(a == 0)
+  if (a == 0)
     print((int*)s);
-  else if(a == 1)
-    print(itoa((int)s,string_buffer,10,0,0));
+  else if (a == 1)
+    print(itoa((int)s, string_buffer, 10, 0, 0));
   else
     print((int*)"wrong print input");
   println();
@@ -1827,7 +1827,7 @@ int isCharacterDigit() {
   //   else
   //     return 0;
 
-  if(character >= '0' && character <= '9')
+  if (character >= '0' && character <= '9')
     return 1;
   else
     return 0;
@@ -2112,12 +2112,11 @@ int getSymbol() {
   } else if (character == CHAR_EXCLAMATION) {
     getCharacter();
 
-    if (character == CHAR_EQUAL)
+    if (character == CHAR_EQUAL) {
       getCharacter();
-    else
-      syntaxErrorCharacter(CHAR_EQUAL);
-
-    symbol = SYM_NOTEQ;
+      symbol = SYM_NOTEQ;
+    } else
+      symbol = SYM_NOT;
 
   } else if (character == CHAR_PERCENTAGE) {
     getCharacter();
@@ -2126,13 +2125,13 @@ int getSymbol() {
 
   } else if (character == CHAR_AMPERSAND) {
     getCharacter();
-      if(character == CHAR_AMPERSAND){
-        symbol = SYM_AND;
-        getCharacter();
-      }
+    if (character == CHAR_AMPERSAND) {
+      symbol = SYM_AND;
+      getCharacter();
+    }
   } else if (character == CHAR_VERTICALLINE) {
     getCharacter();
-    if(character == CHAR_VERTICALLINE){
+    if (character == CHAR_VERTICALLINE) {
       symbol = SYM_OR;
       getCharacter();
     }
@@ -2273,10 +2272,10 @@ int isNotRbraceOrEOF() {
     return 1;
 }
 
-int isANDorOR(){
-  if(symbol == SYM_AND)
+int isANDorOR() {
+  if (symbol == SYM_AND)
     return 1;
-  else if(symbol == SYM_OR)
+  else if (symbol == SYM_OR)
     return 1;
   else
     return 0;
@@ -3455,15 +3454,31 @@ int* manageList(int input) {
   return entry;
 }
 
+void reverseBoolean() {
+  emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 4);
+  emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
+  emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
+  emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
+}
 // &&
-int gr_andExpression(int* fixupBoolean){
+int gr_andExpression(int* fixupBoolean) {
   int ltype;
   int rtype;
   int* head;
+  int isNot;
 
+  isNot = 0;
+
+  if (symbol == SYM_NOT) {
+    getSymbol();
+    isNot = 1;
+  }
   ltype = gr_compareExpression();
-
-  if(symbol == SYM_AND){
+  if (isNot) {
+    isNot = 0;
+    reverseBoolean();
+  }
+  if (symbol == SYM_AND) {
 
     *(fixupBoolean) = (int) manageList(binaryLength);
     head = (int*) * (fixupBoolean);
@@ -3472,7 +3487,16 @@ int gr_andExpression(int* fixupBoolean){
 
   while (symbol == SYM_AND) {
     getSymbol();
+    if (symbol == SYM_NOT) {
+      getSymbol();
+      isNot = 1;
+    }
     rtype = gr_compareExpression();
+
+    if (isNot) {
+      isNot = 0;
+      reverseBoolean();
+    }
 
     *(head + 1) = (int) manageList(binaryLength);
     head = (int*) * (head + 1);
@@ -3484,13 +3508,24 @@ int gr_andExpression(int* fixupBoolean){
 }
 
 // ||
-int gr_expression(int* fixupBoolean){
+int gr_expression(int* fixupBoolean) {
   int ltype;
   int rtype;
   int* head;
+  int isNot;
 
+  isNot = 0;
 
+  if (symbol == SYM_NOT) {
+    getSymbol();
+    isNot = 1;
+  }
   ltype = gr_andExpression(fixupBoolean);
+
+  if (isNot) {
+    isNot = 0;
+    reverseBoolean();
+  }
 
   if (symbol == SYM_OR) {
 
@@ -3501,7 +3536,17 @@ int gr_expression(int* fixupBoolean){
 
   while (symbol == SYM_OR) {
     getSymbol();
+
+    if (symbol == SYM_NOT) {
+      getSymbol();
+      isNot = 1;
+    }
     rtype = gr_andExpression(fixupBoolean);
+
+    if (isNot) {
+      isNot = 0;
+      reverseBoolean();
+    }
 
     *(head + 1) = (int) manageList(binaryLength);
     head = (int*) * (head + 1);
@@ -3681,9 +3726,10 @@ void gr_if() {
           while (*(head + 1) != 0) {
             fixup_relative(*head);
             head = (int*) * (head + 1);
-            //tfree(1);
+            tfree(1);
           }
           fixup_relative(*head);
+          //tfree(1);
         }
 
         // zero or more statements: { statement }
@@ -3751,15 +3797,16 @@ void gr_if() {
           // if the "if" case was not true, we jump here
           fixup_relative(brForwardToElseOrEnd);
 
-          if (*(fixupBoolean) != 0) {
-            head = (int*) * (fixupBoolean);
-            while (*(head + 1) != 0) {
-              fixup_relative(*head);
-              head = (int*) * (head + 1);
-              //tfree(1);
-            }
+        if (*(fixupBoolean) != 0) {
+          head = (int*) * (fixupBoolean);
+          while (*(head + 1) != 0) {
             fixup_relative(*head);
+            head = (int*) * (head + 1);
+            tfree(1);
           }
+          fixup_relative(*head);
+          //tfree(1);
+        }
 
       } else
         syntaxErrorSymbol(SYM_RPARENTHESIS);
@@ -3935,24 +3982,23 @@ void gr_statement() {
         syntaxErrorSymbol(SYM_SEMICOLON);
 
       // identifier = expression
-    }
-    else if (symbol == SYM_STRUCTARROW) {
-        //struct
-        ltype = gr_struct();
+    } else if (symbol == SYM_STRUCTARROW) {
+      //struct
+      ltype = gr_struct();
 
-        if (symbol == SYM_ASSIGN)
-          getSymbol();
-        else
-          syntaxErrorSymbol(SYM_ASSIGN);
+      if (symbol == SYM_ASSIGN)
+        getSymbol();
+      else
+        syntaxErrorSymbol(SYM_ASSIGN);
 
-        emitIFormat(OP_SW, previousTemporary(), currentTemporary(), 0);
+      emitIFormat(OP_SW, previousTemporary(), currentTemporary(), 0);
 
-        tfree(2);
+      tfree(2);
 
-        if (symbol == SYM_SEMICOLON)
-          getSymbol();
-        else
-          syntaxErrorSymbol(SYM_SEMICOLON);
+      if (symbol == SYM_SEMICOLON)
+        getSymbol();
+      else
+        syntaxErrorSymbol(SYM_SEMICOLON);
 
     } else if (symbol == SYM_ASSIGN) {
 
@@ -4107,15 +4153,15 @@ void gr_variable(int offset) {
       }
     }
 
-      if(sizeY != 0){
-        if(sizeX != 0)
-          size = sizeY * sizeX - 1;
-        else
-          size = sizeY - 1;
-      }
+    if (sizeY != 0) {
+      if (sizeX != 0)
+        size = sizeY * sizeX - 1;
+      else
+        size = sizeY - 1;
+    }
 
-      //if(offset < 0)//@todo ist die zeile noetig?
-        offset = offset - size * WORDSIZE;
+    //if(offset < 0)//@todo ist die zeile noetig?
+    offset = offset - size * WORDSIZE;
 
 
     if (type == STRUCTPOINTER_T) {
@@ -7819,13 +7865,115 @@ int main(int argc, int* argv) {
   print((int*)"This is knights Selfie");
   println();
 
-  if (1 && 1) {
-    printaln((int*) "1 && 1 is working",0);
-  }
+  println();
+  printaln((int*)"Testcases for AND/NOT:", 0);
+  println();
 
-  if (1 || 1){
-    printaln((int*)"1 || 1 is working",0);
-  }
+  if (1 && 1) {
+    printaln((int*) "1 && 1 is working", 0);
+  } else
+    printaln((int*) "1 && 1 is working wrong", 0);
+
+  if (1 && 0) {
+    printaln((int*) "1 && 0 is working wrong", 0);
+  } else
+    printaln((int*) "1 && 0 is working", 0);
+
+  if (0 && 1) {
+    printaln((int*) "0 && 1 is working wrong", 0);
+  } else
+    printaln((int*) "0 && 1 is working", 0);
+
+  if (0 && 0) {
+    printaln((int*) "0 && 0 is working wrong", 0);
+  } else
+    printaln((int*) "0 && 0 is working", 0);
+
+  if (1 && !0) {
+    printaln((int*) "1 && !0 is working", 0);
+  } else
+    printaln((int*) "1 && !0 is working wrong", 0);
+
+  if (1 && 1 && 1) {
+    printaln((int*) "1 && 1 && 1 is working", 0);
+  } else
+    printaln((int*) "1 && 1 && 1 is working wrong", 0);
+
+  if (1 && 0 && 1) {
+    printaln((int*) "1 && 0 && 1 is working wrong", 0);
+  } else
+    printaln((int*) "1 && 0 && 1 is working", 0);
+
+  if (0 && 1 && 1) {
+    printaln((int*) "1 && 1 is working wrong", 0);
+  } else
+    printaln((int*) "0 && 1 && 1 is working", 0);
+
+  println();
+  printaln((int*)"Testcases for OR/NOT:", 0);
+  println();
+  
+  if (1 || 1) {
+    printaln((int*) "1 || 1 is working", 0);
+  } else
+    printaln((int*) "1 || 1 is working wrong", 0);
+
+  if (1 || 0) {
+    printaln((int*) "1 || 0 is working", 0);
+  } else
+    printaln((int*) "1 || 0 is working wrong", 0);
+
+  if (0 || 1) {
+    printaln((int*) "0 || 1 is working", 0);
+  } else
+    printaln((int*) "0 || 1 is working wrong", 0);
+
+  if (0 || 0) {
+    printaln((int*) "0 || 0 is working wrong", 0);
+  } else
+    printaln((int*) "0 || 0 is working", 0);
+
+  if (1 || !0) {
+    printaln((int*) "1 || !0 is working", 0);
+  } else
+    printaln((int*) "1 || !0 is working wrong", 0);
+
+  if (1 || 1 || 1) {
+    printaln((int*) "1 || 1 || 1 is working", 0);
+  } else
+    printaln((int*) "1 || 1 || 1 is working wrong", 0);
+
+  if (1 || 0 || 1) {
+    printaln((int*) "1 || 0 || 1 is working", 0);
+  } else
+    printaln((int*) "1 || 0 || 1 is working wrong", 0);
+
+  if (0 || 0 || 0) {
+    printaln((int*) "0 || 0 || 0 is working wrong", 0);
+  } else
+    printaln((int*) "0 || 0 || 0 is working", 0);
+
+  println();
+  printaln((int*)"Testcases for AND/OR/NOT:", 0);
+  println();
+
+  if (1 || 1 && 1) {
+    printaln((int*) "1 || 1 && 1 is working", 0);
+  } else
+    printaln((int*) "1 || 1 && 1 is working wrong", 0);
+
+  if (0 || 1 && 0) {
+    printaln((int*) "0 || 1 && 0 is working wrong", 0);
+  } else
+    printaln((int*) "0 || 1 && 0 is working", 0);
+
+  if (!0 && 1 || 0) {
+    printaln((int*) "!0 && 1 || 0 is working", 0);
+  } else
+    printaln((int*) "!0 && 1 || 0 is working wrong", 0);
+
+  println();
+
 
 
   // print((int*) "Structs:");
