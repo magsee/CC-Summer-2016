@@ -1804,6 +1804,11 @@ int findNextCharacter() {
 }
 
 int isCharacterLetter() {
+  // if((character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z'))
+  //   return 1;
+  // else
+  //   return 0;
+
   if (character >= 'a')
     if (character <= 'z')
       return 1;
@@ -3730,6 +3735,8 @@ void gr_if() {
           }
           fixup_relative(*head);
           //tfree(1);
+          *(fixupBoolean) = 0;
+          *(fixupBoolean + 1) = 0;
         }
 
         // zero or more statements: { statement }
@@ -3767,9 +3774,12 @@ void gr_if() {
             while (*(head + 1) != 0) {
               fixup_relative(*head);
               head = (int*) * (head + 1);
-              //tfree(1);
+              tfree(1);
             }
             fixup_relative(*head);
+            //tfree(1);
+            *(fixupBoolean) = 0;
+            *(fixupBoolean + 1) = 0;
           }
 
           // zero or more statements: { statement }
@@ -3806,6 +3816,8 @@ void gr_if() {
           }
           fixup_relative(*head);
           //tfree(1);
+          *(fixupBoolean) = 0;
+          *(fixupBoolean + 1) = 0;
         }
 
       } else
@@ -7844,9 +7856,15 @@ void printSymbolCount() {
 //@todoteam
 int main(int argc, int* argv) {
 
-  // int a;
+  int a;
+  int b;
+  int c;
+  int d;
   // struct globalstruct* teststruct;
-
+  a = 0;
+  b = 0;
+  c = 1;
+  d = 1;
 
   initLibrary();
 
@@ -7912,7 +7930,7 @@ int main(int argc, int* argv) {
   println();
   printaln((int*)"Testcases for OR/NOT:", 0);
   println();
-  
+
   if (1 || 1) {
     printaln((int*) "1 || 1 is working", 0);
   } else
@@ -7933,10 +7951,10 @@ int main(int argc, int* argv) {
   } else
     printaln((int*) "0 || 0 is working", 0);
 
-  if (1 || !0) {
-    printaln((int*) "1 || !0 is working", 0);
+  if (0 || !0) {
+    printaln((int*) "0 || !0 is working", 0);
   } else
-    printaln((int*) "1 || !0 is working wrong", 0);
+    printaln((int*) "0 || !0 is working wrong", 0);
 
   if (1 || 1 || 1) {
     printaln((int*) "1 || 1 || 1 is working", 0);
@@ -7962,16 +7980,53 @@ int main(int argc, int* argv) {
   } else
     printaln((int*) "1 || 1 && 1 is working wrong", 0);
 
-  if (0 || 1 && 0) {
-    printaln((int*) "0 || 1 && 0 is working wrong", 0);
-  } else
-    printaln((int*) "0 || 1 && 0 is working", 0);
+    if (0 || 1 && 0) {
+      printaln((int*) "0 || 1 && 0 is working wrong", 0);
+    } else
+      printaln((int*) "0 || 1 && 0 is working", 0);
 
-  if (!0 && 1 || 0) {
-    printaln((int*) "!0 && 1 || 0 is working", 0);
-  } else
-    printaln((int*) "!0 && 1 || 0 is working wrong", 0);
+      if (0 && 1 || 1) {
+        printaln((int*) "0 && 1 || 1 is working", 0);
+      } else
+        printaln((int*) "0 && 1 || 1 is working wrong", 0);
 
+    if (!0 && 1 || 0) {
+      printaln((int*) "!0 && 1 || 0 is working", 0);
+    } else
+      printaln((int*) "!0 && 1 || 0 is working wrong", 0);
+      if (1 && !0 || 0) {
+        printaln((int*) "1 && !0 || 0 is working", 0);
+      } else
+        printaln((int*) "1 && !0 || 0 is working wrong", 0);
+
+
+    println();
+    printaln((int*)"Testcases for variables:", 0);
+    println();
+
+  if(a && b){
+    printaln((int*) "a && b is working wrong", 0);
+  } else
+    printaln((int*) "a && b is working", 0);
+
+    if(c && d){
+      printaln((int*) "c && d is working", 0);
+    } else
+      printaln((int*) "c && d is working wrong", 0);
+
+      if(a || d){
+        printaln((int*) "a || d is working", 0);
+      } else
+        printaln((int*) "a || d is working wrong", 0);
+
+        // if(a || 1 || d || 1){
+        //   printaln((int*) "a || 1 || d || 1 is working", 0);
+        // } else
+        //   printaln((int*) "a || 1 || d || 1 is working wrong", 0);
+          // if(a && 1 || d && 1){
+          //   printaln((int*) "a && 1 || d && 1 is working", 0);
+          // } else
+          //   printaln((int*) "a && 1 || d && 1 is working wrong", 0);
   println();
 
 
