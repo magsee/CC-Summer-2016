@@ -1825,12 +1825,13 @@ int isCharacterLetter() {
 
 int isCharacterDigit() {
 
-
   // if (character >= '0')
   //   if (character <= '9')
   //     return 1;
   //   else
   //     return 0;
+  // else
+  //   return 0;
 
   if (character >= '0' && character <= '9')
     return 1;
@@ -3458,18 +3459,24 @@ int* manageList(int input) {
   *(entry + 1) = 0;
   return entry;
 }
-
 void reverseBoolean() {
-  emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 4);
-  emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
-  emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
-  emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
+ emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 3);
+ emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
+ emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
+ emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
 }
+// void reverseBoolean() {
+//   // emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 4);
+//   // emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
+//   // emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
+//   // emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
+// }
 // &&
 int gr_andExpression(int* fixupBoolean) {
   int ltype;
   int rtype;
   int* head;
+  int* shead;
   int isNot;
 
   isNot = 0;
@@ -3478,7 +3485,9 @@ int gr_andExpression(int* fixupBoolean) {
     getSymbol();
     isNot = 1;
   }
+
   ltype = gr_compareExpression();
+
   if (isNot) {
     isNot = 0;
     reverseBoolean();
@@ -3492,6 +3501,20 @@ int gr_andExpression(int* fixupBoolean) {
 
   while (symbol == SYM_AND) {
     getSymbol();
+
+    if (*(fixupBoolean + 1) != 0) {
+      shead = (int*) * (fixupBoolean + 1);
+
+      while (*(shead + 1) != 0) {
+        fixup_relative(*shead);
+        shead = (int*) * (shead + 1);
+        tfree(1);//HERE
+      }
+      fixup_relative(*shead);
+      // *(fixupBoolean) = 0;
+      // *(fixupBoolean + 1) = 0;
+    }
+
     if (symbol == SYM_NOT) {
       getSymbol();
       isNot = 1;
@@ -3517,6 +3540,7 @@ int gr_expression(int* fixupBoolean) {
   int ltype;
   int rtype;
   int* head;
+  int* shead;
   int isNot;
 
   isNot = 0;
@@ -3533,14 +3557,28 @@ int gr_expression(int* fixupBoolean) {
   }
 
   if (symbol == SYM_OR) {
-
     *(fixupBoolean + 1) = (int) manageList(binaryLength);
-    head = (int*) * (fixupBoolean + 1);
+    head = (int*) *(fixupBoolean + 1);
     emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 0);
   }
 
   while (symbol == SYM_OR) {
     getSymbol();
+
+    if (*(fixupBoolean) != 0) {
+      shead = (int*) * (fixupBoolean);
+      while (*(shead + 1) != 0) {
+        fixup_relative(*shead);
+        shead = (int*) * (shead + 1);
+        tfree(1);//HERE
+      }
+      fixup_relative(*shead);
+
+      //print((int*)"debug2");
+      // *(fixupBoolean) = 0;
+      // *(fixupBoolean + 1) = 0;
+    }
+
 
     if (symbol == SYM_NOT) {
       getSymbol();
@@ -3734,9 +3772,8 @@ void gr_if() {
             tfree(1);
           }
           fixup_relative(*head);
-          //tfree(1);
-          *(fixupBoolean) = 0;
-          *(fixupBoolean + 1) = 0;
+          // *(fixupBoolean) = 0;
+          // *(fixupBoolean + 1) = 0;
         }
 
         // zero or more statements: { statement }
@@ -3774,12 +3811,11 @@ void gr_if() {
             while (*(head + 1) != 0) {
               fixup_relative(*head);
               head = (int*) * (head + 1);
-              tfree(1);
+              tfree(1);//HERE
             }
             fixup_relative(*head);
-            //tfree(1);
-            *(fixupBoolean) = 0;
-            *(fixupBoolean + 1) = 0;
+            //  *(fixupBoolean) = 0;
+            // *(fixupBoolean + 1) = 0;
           }
 
           // zero or more statements: { statement }
@@ -3803,7 +3839,7 @@ void gr_if() {
 
           // if the "if" case was true, we jump here
           fixup_relative(brForwardToEnd);
-        } else
+        } else{
           // if the "if" case was not true, we jump here
           fixup_relative(brForwardToElseOrEnd);
 
@@ -3812,14 +3848,13 @@ void gr_if() {
           while (*(head + 1) != 0) {
             fixup_relative(*head);
             head = (int*) * (head + 1);
-            tfree(1);
+            tfree(1);//HERE
           }
           fixup_relative(*head);
-          //tfree(1);
-          *(fixupBoolean) = 0;
-          *(fixupBoolean + 1) = 0;
+          // *(fixupBoolean) = 0;
+          // *(fixupBoolean + 1) = 0;
         }
-
+      }
       } else
         syntaxErrorSymbol(SYM_RPARENTHESIS);
     } else
@@ -7951,12 +7986,9 @@ int main(int argc, int* argv) {
   } else
     printaln((int*) "0 || 0 is working", 0);
 
-  if (0 || !0) {
-    printaln((int*) "0 || !0 is working", 0);
-  } else
-    printaln((int*) "0 || !0 is working wrong", 0);
 
-  if (1 || 1 || 1) {
+
+  if (d || 1 || a || 1) {
     printaln((int*) "1 || 1 || 1 is working", 0);
   } else
     printaln((int*) "1 || 1 || 1 is working wrong", 0);
@@ -7980,55 +8012,100 @@ int main(int argc, int* argv) {
   } else
     printaln((int*) "1 || 1 && 1 is working wrong", 0);
 
-    if (0 || 1 && 0) {
-      printaln((int*) "0 || 1 && 0 is working wrong", 0);
-    } else
-      printaln((int*) "0 || 1 && 0 is working", 0);
+  if (0 || 1 && 0) {
+    printaln((int*) "0 || 1 && 0 is working wrong", 0);
+  } else
+    printaln((int*) "0 || 1 && 0 is working", 0);
 
-      if (0 && 1 || 1) {
-        printaln((int*) "0 && 1 || 1 is working", 0);
-      } else
-        printaln((int*) "0 && 1 || 1 is working wrong", 0);
+  if (0 && 1 || 1) {
+    printaln((int*) "0 && 1 || 1 is working", 0);
+  } else
+    printaln((int*) "0 && 1 || 1 is working wrong", 0);
+  if (1 && 0 || 1) {
+    printaln((int*) "1 && 0 || 1 is working", 0);
+  } else
+    printaln((int*) "1 && 0 || 1 is working wrong", 0);
+  if (1 && 1 || 0) {
+    printaln((int*) "1 && 1 || 0 is working", 0);
+  } else
+    printaln((int*) "1 && 1 || 0 is working wrong", 0);
 
-    if (!0 && 1 || 0) {
-      printaln((int*) "!0 && 1 || 0 is working", 0);
-    } else
-      printaln((int*) "!0 && 1 || 0 is working wrong", 0);
-      if (1 && !0 || 0) {
-        printaln((int*) "1 && !0 || 0 is working", 0);
-      } else
-        printaln((int*) "1 && !0 || 0 is working wrong", 0);
+  if (0 && 0 || 1) {
+    printaln((int*) "0 && 0 || 1 is working", 0);
+  } else
+    printaln((int*) "0 && 0 || 1 is working wrong", 0);
+
+  if (0 && 1 || 0) {
+    printaln((int*) "0 && 1 || 0 is working wrong", 0);
+  } else
+    printaln((int*) "0 && 1 || 0 is working", 0);
+
+  if (0 && 0 || 0 && 1) {
+    printaln((int*) "0 && 0 || 0 is working wrong ", 0);
+  } else
+    printaln((int*) "0 && 0 || 0 is working", 0);
+
+  if (1 && 1 || 1 && 1) {
+    printaln((int*) "1 && 1 || 1 is working", 0);
+  } else
+    printaln((int*) "1 && 1 || 1 is working wrong", 0);
+
+  if (1 && 0 || 0 && 1) {
+    printaln((int*) "1 && 0 || 0 is working wrong", 0);
+  } else
+    printaln((int*) "1 && 0 || 0 is working", 0);
 
 
-    println();
-    printaln((int*)"Testcases for variables:", 0);
-    println();
 
-  if(a && b){
+
+  println();
+  printaln((int*)"Testcases for variables:", 0);
+  println();
+
+  if (a && b) {
     printaln((int*) "a && b is working wrong", 0);
   } else
     printaln((int*) "a && b is working", 0);
 
-    if(c && d){
-      printaln((int*) "c && d is working", 0);
-    } else
-      printaln((int*) "c && d is working wrong", 0);
+  if (c && d) {
+    printaln((int*) "c && d is working", 0);
+  } else
+    printaln((int*) "c && d is working wrong", 0);
 
-      if(a || d){
-        printaln((int*) "a || d is working", 0);
-      } else
-        printaln((int*) "a || d is working wrong", 0);
+  if (a || d) {
+    printaln((int*) "a || d is working", 0);
+  } else {
+    print((int*) "a || d is working wrong");
+    println();
+  }
 
-        // if(a || 1 || d || 1){
-        //   printaln((int*) "a || 1 || d || 1 is working", 0);
-        // } else
-        //   printaln((int*) "a || 1 || d || 1 is working wrong", 0);
-          // if(a && 1 || d && 1){
-          //   printaln((int*) "a && 1 || d && 1 is working", 0);
-          // } else
-          //   printaln((int*) "a && 1 || d && 1 is working wrong", 0);
+  if (!0)
+    printaln((int*) "NOT FUNKTIONIERT DOCH", 0);
+
+  if (a || 1 || d || 1) {
+    printaln((int*) "a || 1 || d || 1 is working", 0);
+  } else
+    printaln((int*) "a || 1 || d || 1 is working wrong", 0);
+  if (a && 1 || d && 1) {
+    printaln((int*) "a && 1 || d && 1 is working", 0);
+  } else
+    printaln((int*) "a && 1 || d && 1 is working wrong", 0);
   println();
 
+
+
+  if (0 || !0) {
+    printaln((int*) "0 || !0 is working", 0);
+  } else
+    printaln((int*) "0 || !0 is working wrong", 0);
+  if (!0 && 1 || 0) {
+    printaln((int*) "!0 && 1 || 0 is working", 0);
+  } else
+    printaln((int*) "!0 && 1 || 0 is working wrong", 0);
+  if (1 && !0 || 0) {
+    printaln((int*) "1 && !0 || 0 is working", 0);
+  } else
+    printaln((int*) "1 && !0 || 0 is working wrong", 0);
 
 
   // print((int*) "Structs:");
