@@ -292,7 +292,7 @@ int SYM_NOT          = 36; // !
 
 int SYMBOLS[37][2]; // array of strings representing symbols
 
-struct symTableEntry {
+struct symbolTableEntry {
   int* string;
   int line;
   int class;
@@ -304,7 +304,7 @@ struct symTableEntry {
   int sizeX;
   int* referenceType;
   int* nextField;
-  struct symTableEntry* next;
+  struct symbolTableEntry* next;
 
 };
 
@@ -2963,7 +2963,7 @@ int gr_factor(int* constant) {
         talloc();
         emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), getAddress(array));
         emitRFormat(OP_SPECIAL, getScope(array), currentTemporary(), currentTemporary(), FCT_ADDU);
-       } else {
+      } else {
         type = load_variable(variableOrProcedureName);
       }
     }
@@ -3517,10 +3517,10 @@ int* manageList(int input) {
   return entry;
 }
 void reverseBoolean() {
- emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 3);
- emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
- emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
- emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
+  emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 3);
+  emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
+  emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
+  emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
 }
 
 int gr_andExpression(int* fixupBoolean) {
@@ -3609,7 +3609,7 @@ int gr_expression(int* fixupBoolean) {
 
   if (symbol == SYM_OR) {
     *(fixupBoolean + 1) = (int) manageList(binaryLength);
-    head = (int*) *(fixupBoolean + 1);
+    head = (int*) * (fixupBoolean + 1);
     emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 0);
   }
 
@@ -3888,22 +3888,22 @@ void gr_if() {
 
           // if the "if" case was true, we jump here
           fixup_relative(brForwardToEnd);
-        } else{
+        } else {
           // if the "if" case was not true, we jump here
           fixup_relative(brForwardToElseOrEnd);
 
-        if (*(fixupBoolean) != 0) {
-          head = (int*) * (fixupBoolean);
-          while (*(head + 1) != 0) {
+          if (*(fixupBoolean) != 0) {
+            head = (int*) * (fixupBoolean);
+            while (*(head + 1) != 0) {
+              fixup_relative(*head);
+              head = (int*) * (head + 1);
+              tfree(1);//HERE
+            }
             fixup_relative(*head);
-            head = (int*) * (head + 1);
-            tfree(1);//HERE
+            // *(fixupBoolean) = 0;
+            // *(fixupBoolean + 1) = 0;
           }
-          fixup_relative(*head);
-          // *(fixupBoolean) = 0;
-          // *(fixupBoolean + 1) = 0;
         }
-      }
       } else
         syntaxErrorSymbol(SYM_RPARENTHESIS);
     } else
@@ -4087,7 +4087,7 @@ void gr_statement() {
       else
         syntaxErrorSymbol(SYM_ASSIGN);
 
-        rtype = gr_expression(fixupBoolean);
+      rtype = gr_expression(fixupBoolean);
 
 
       emitIFormat(OP_SW, previousTemporary(), currentTemporary(), 0);
@@ -7896,7 +7896,7 @@ void printSymbolCount() {
 }
 
 
-void structTest(struct symTableEntry* entry){
+void structTest(struct symbolTableEntry* entry) {
   entry -> string = (int*) "after the test";
 }
 
@@ -7905,7 +7905,7 @@ void structTest(struct symTableEntry* entry){
 int main(int argc, int* argv) {
 
   struct globalstruct* teststruct;
-  struct symTableEntry* assignmentTest;
+  struct symbolTableEntry* assignmentTest;
 
   initLibrary();
 
@@ -7928,30 +7928,30 @@ int main(int argc, int* argv) {
   print((int*) "Structs:");
   println();
 
-    assignmentTest = (struct symTableEntry*) malloc(4 * SIZEOFINTSTAR + 8 * SIZEOFINT);
-    teststruct = (struct globalstruct*)malloc(34 * SIZEOFINT);
-    //teststruct = (struct globalstruct*) malloc(8);
-    teststruct -> x = 1;
-    teststruct -> y = 42;
+  assignmentTest = (struct symbolTableEntry*) malloc(4 * SIZEOFINTSTAR + 8 * SIZEOFINT);
+  teststruct = (struct globalstruct*)malloc(34 * SIZEOFINT);
+  //teststruct = (struct globalstruct*) malloc(8);
+  teststruct -> x = 1;
+  teststruct -> y = 42;
 
-    print((int*) " teststruct->x = 1: ");
-    print(itoa(teststruct->x, string_buffer, 10, 0, 0));
-    println();
+  print((int*) " teststruct->x = 1: ");
+  print(itoa(teststruct->x, string_buffer, 10, 0, 0));
+  println();
 
-    print((int*) " teststruct->y = 42: ");
-    print(itoa(teststruct->y, string_buffer, 10, 0, 0));
-    println();
+  print((int*) " teststruct->y = 42: ");
+  print(itoa(teststruct->y, string_buffer, 10, 0, 0));
+  println();
 
-    assignmentTest->string = (int*) "before the test";
+  assignmentTest->string = (int*) "before the test";
 
-    print((int*) " before: ");
-    print((int*)assignmentTest->string);
-    println();
+  print((int*) " before: ");
+  print((int*)assignmentTest->string);
+  println();
 
-    structTest(assignmentTest);
-    print((int*) " after: ");
-    print((int*)assignmentTest->string);
-    println();
+  structTest(assignmentTest);
+  print((int*) " after: ");
+  print((int*)assignmentTest->string);
+  println();
 
   //printSymbolCount();
 
