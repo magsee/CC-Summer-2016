@@ -879,6 +879,8 @@ void implementOpen();
 
 void emitMalloc();
 void implementMalloc();
+void emitFree();
+void implementFree();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -894,6 +896,7 @@ int SYSCALL_WRITE  = 4004;
 int SYSCALL_OPEN   = 4005;
 
 int SYSCALL_MALLOC = 4045;
+int SYSCALL_FREE   = 4046;
 
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
@@ -1100,6 +1103,8 @@ int reg_lo = 0; // lo register for multiplication/division
 int* pt = (int*) 0; // page table
 
 int brk = 0; // break between code, data, and heap
+
+int* freeList = (int*)0; // list containing addresses to previously freed memory
 
 int trap = 0; // flag for creating a trap
 
@@ -4317,6 +4322,7 @@ void gr_procedure(int* procedure, int returnType) {
   int localVariables;
   int functionStart;
   int* entry;
+  int* toFree;
 
   currentProcedureName = procedure;
 
@@ -4444,6 +4450,12 @@ void gr_procedure(int* procedure, int returnType) {
 
   } else
     syntaxErrorUnexpected();
+
+  while (local_symbol_table != (int*)0) {
+    toFree = (int*)(*local_symbol_table);
+    free(local_symbol_table);
+    local_symbol_table = toFree;
+  }
 
   local_symbol_table = (int*) 0;
 
@@ -4903,6 +4915,7 @@ void selfie_compile() {
   emitWrite();
   emitOpen();
   emitMalloc();
+  emitFree();
 
   emitID();
   emitCreate();
@@ -5807,6 +5820,32 @@ void implementMalloc() {
   }
 }
 
+void emitFree() {
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "free", 0, PROCEDURE, INTSTAR_T, 0, binaryLength, 0, 0);
+
+  emitIFormat(OP_LW, REG_SP, REG_A0, 0); // size
+  emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+
+  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_FREE);
+  emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
+
+  emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
+}
+
+void implementFree() {
+
+  if (debug_malloc) {
+    print(binaryName);
+    print((int*) ": trying to free address ");
+    print(itoa(*(registers + REG_A0), string_buffer, 10, 0, 0));
+    println();
+  }
+
+  storeVirtualMemory(pt, *(registers + REG_A0), *freeList);
+  storeVirtualMemory(pt, freeList, *(registers + REG_A0));
+
+}
+
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
 // -----------------------------------------------------------------
@@ -6268,6 +6307,8 @@ void fct_syscall() {
       implementOpen();
     else if (*(registers + REG_V0) == SYSCALL_MALLOC)
       implementMalloc();
+    else if (*(registers + REG_V0) == SYSCALL_FREE)
+      implementFree();
     else if (*(registers + REG_V0) == SYSCALL_ID)
       implementID();
     else if (*(registers + REG_V0) == SYSCALL_CREATE)
@@ -7891,16 +7932,6 @@ void printSymbolCount() {
 //@todoteam
 int main(int argc, int* argv) {
 
-  int a;
-  int b;
-  int c;
-  int d;
-  // struct globalstruct* teststruct;
-  a = 0;
-  b = 0;
-  c = 1;
-  d = 1;
-
   initLibrary();
 
   initScanner();
@@ -7917,211 +7948,6 @@ int main(int argc, int* argv) {
 
   print((int*)"This is knights Selfie");
   println();
-
-  println();
-  printaln((int*)"Testcases for AND/NOT:", 0);
-  println();
-
-  if (1 && 1) {
-    printaln((int*) "1 && 1 is working", 0);
-  } else
-    printaln((int*) "1 && 1 is working wrong", 0);
-
-  if (1 && 0) {
-    printaln((int*) "1 && 0 is working wrong", 0);
-  } else
-    printaln((int*) "1 && 0 is working", 0);
-
-  if (0 && 1) {
-    printaln((int*) "0 && 1 is working wrong", 0);
-  } else
-    printaln((int*) "0 && 1 is working", 0);
-
-  if (0 && 0) {
-    printaln((int*) "0 && 0 is working wrong", 0);
-  } else
-    printaln((int*) "0 && 0 is working", 0);
-
-  if (1 && !0) {
-    printaln((int*) "1 && !0 is working", 0);
-  } else
-    printaln((int*) "1 && !0 is working wrong", 0);
-
-  if (1 && 1 && 1) {
-    printaln((int*) "1 && 1 && 1 is working", 0);
-  } else
-    printaln((int*) "1 && 1 && 1 is working wrong", 0);
-
-  if (1 && 0 && 1) {
-    printaln((int*) "1 && 0 && 1 is working wrong", 0);
-  } else
-    printaln((int*) "1 && 0 && 1 is working", 0);
-
-  if (0 && 1 && 1) {
-    printaln((int*) "1 && 1 is working wrong", 0);
-  } else
-    printaln((int*) "0 && 1 && 1 is working", 0);
-
-  println();
-  printaln((int*)"Testcases for OR/NOT:", 0);
-  println();
-
-  if (1 || 1) {
-    printaln((int*) "1 || 1 is working", 0);
-  } else
-    printaln((int*) "1 || 1 is working wrong", 0);
-
-  if (1 || 0) {
-    printaln((int*) "1 || 0 is working", 0);
-  } else
-    printaln((int*) "1 || 0 is working wrong", 0);
-
-  if (0 || 1) {
-    printaln((int*) "0 || 1 is working", 0);
-  } else
-    printaln((int*) "0 || 1 is working wrong", 0);
-
-  if (0 || 0) {
-    printaln((int*) "0 || 0 is working wrong", 0);
-  } else
-    printaln((int*) "0 || 0 is working", 0);
-
-
-
-  if (d || 1 || a || 1) {
-    printaln((int*) "1 || 1 || 1 is working", 0);
-  } else
-    printaln((int*) "1 || 1 || 1 is working wrong", 0);
-
-  if (1 || 0 || 1) {
-    printaln((int*) "1 || 0 || 1 is working", 0);
-  } else
-    printaln((int*) "1 || 0 || 1 is working wrong", 0);
-
-  if (0 || 0 || 0) {
-    printaln((int*) "0 || 0 || 0 is working wrong", 0);
-  } else
-    printaln((int*) "0 || 0 || 0 is working", 0);
-
-  println();
-  printaln((int*)"Testcases for AND/OR/NOT:", 0);
-  println();
-
-  if (1 || 1 && 1) {
-    printaln((int*) "1 || 1 && 1 is working", 0);
-  } else
-    printaln((int*) "1 || 1 && 1 is working wrong", 0);
-
-  if (0 || 1 && 0) {
-    printaln((int*) "0 || 1 && 0 is working wrong", 0);
-  } else
-    printaln((int*) "0 || 1 && 0 is working", 0);
-
-  if (0 && 1 || 1) {
-    printaln((int*) "0 && 1 || 1 is working", 0);
-  } else
-    printaln((int*) "0 && 1 || 1 is working wrong", 0);
-  if (1 && 0 || 1) {
-    printaln((int*) "1 && 0 || 1 is working", 0);
-  } else
-    printaln((int*) "1 && 0 || 1 is working wrong", 0);
-  if (1 && 1 || 0) {
-    printaln((int*) "1 && 1 || 0 is working", 0);
-  } else
-    printaln((int*) "1 && 1 || 0 is working wrong", 0);
-
-  if (0 && 0 || 1) {
-    printaln((int*) "0 && 0 || 1 is working", 0);
-  } else
-    printaln((int*) "0 && 0 || 1 is working wrong", 0);
-
-  if (0 && 1 || 0) {
-    printaln((int*) "0 && 1 || 0 is working wrong", 0);
-  } else
-    printaln((int*) "0 && 1 || 0 is working", 0);
-
-  if (0 && 0 || 0 && 1) {
-    printaln((int*) "0 && 0 || 0 is working wrong ", 0);
-  } else
-    printaln((int*) "0 && 0 || 0 is working", 0);
-
-  if (1 && 1 || 1 && 1) {
-    printaln((int*) "1 && 1 || 1 is working", 0);
-  } else
-    printaln((int*) "1 && 1 || 1 is working wrong", 0);
-
-  if (1 && 0 || 0 && 1) {
-    printaln((int*) "1 && 0 || 0 is working wrong", 0);
-  } else
-    printaln((int*) "1 && 0 || 0 is working", 0);
-
-
-
-
-  println();
-  printaln((int*)"Testcases for variables:", 0);
-  println();
-
-  if (a && b) {
-    printaln((int*) "a && b is working wrong", 0);
-  } else
-    printaln((int*) "a && b is working", 0);
-
-  if (c && d) {
-    printaln((int*) "c && d is working", 0);
-  } else
-    printaln((int*) "c && d is working wrong", 0);
-
-  if (a || d) {
-    printaln((int*) "a || d is working", 0);
-  } else {
-    print((int*) "a || d is working wrong");
-    println();
-  }
-
-  if (!0)
-    printaln((int*) "NOT FUNKTIONIERT DOCH", 0);
-
-  if (a || 1 || d || 1) {
-    printaln((int*) "a || 1 || d || 1 is working", 0);
-  } else
-    printaln((int*) "a || 1 || d || 1 is working wrong", 0);
-  if (a && 1 || d && 1) {
-    printaln((int*) "a && 1 || d && 1 is working", 0);
-  } else
-    printaln((int*) "a && 1 || d && 1 is working wrong", 0);
-  println();
-
-
-
-  if (0 || !0) {
-    printaln((int*) "0 || !0 is working", 0);
-  } else
-    printaln((int*) "0 || !0 is working wrong", 0);
-  if (!0 && 1 || 0) {
-    printaln((int*) "!0 && 1 || 0 is working", 0);
-  } else
-    printaln((int*) "!0 && 1 || 0 is working wrong", 0);
-  if (1 && !0 || 0) {
-    printaln((int*) "1 && !0 || 0 is working", 0);
-  } else
-    printaln((int*) "1 && !0 || 0 is working wrong", 0);
-
-
-  // print((int*) "Structs:");
-  // println();
-
-  //teststruct = (struct globalstruct*) malloc(34*SIZEOFINT);
-  //
-  // print((int*)"teststruct: ");
-  // println();
-  // print(itoa(teststruct,string_buffer,10,0,0));
-  // println();
-  //
-  // teststruct->variable = 1;
-
-
-  //printSymbolCount();
 
   if (selfie(argc, (int*) argv) != 0) {
     print(selfieName);
