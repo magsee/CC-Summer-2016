@@ -292,15 +292,34 @@ int SYM_NOT          = 36; // !
 
 int SYMBOLS[37][2]; // array of strings representing symbols
 
-// struct globalstruct {
-//   int variable;
-//   int* pointerVar;
-//   int testArray[3];
-//   int test2DArray[2][3];
-//   struct globalstruct* test;
-// };
-//
-// struct globalstruct* test;
+struct symbolTableEntry {
+  int* string;
+  int line;
+  int class;
+  int type;
+  int value;
+  int address;
+  int scope;
+  int sizeY;
+  int sizeX;
+  int* referenceType;
+  int* nextField;
+  struct symbolTableEntry* next;
+
+};
+
+struct globalstruct {
+  int x;
+  int y;
+  int variable;
+  int* pointerVar;
+  int testArray[3];
+  int test2DArray[2][3];
+  struct globalstruct* test;
+};
+
+
+//struct globalstruct* test;
 
 
 int maxIdentifierLength = 64; // maximum number of characters in an identifier
@@ -401,7 +420,7 @@ void createSymbolTableEntry(int which, int* string, int line, int class, int typ
 int* searchSymbolTable(int* entry, int* string, int class);
 int* getSymbolTableEntry(int* string, int class);
 
-void createStructTableEntry(int* entry, int* string, int line, int class, int type, int value, int address, int size, int size2d);
+void createStructTableEntry(int* entry, int* string, int line, int class, int type, int value, int address, int sizeY, int sizeX);
 int* searchStructTable(int* entry, int* string, int class);
 
 int isUndefinedProcedure(int* entry);
@@ -502,7 +521,7 @@ void setReferenceType(int* entry, int* type) {
 int VARIABLE  = 1;
 int PROCEDURE = 2;
 int STRING    = 3;
-int STRUCT    = 4;
+//int STRUCT    = 4;
 
 
 // types
@@ -1830,18 +1849,18 @@ int isCharacterLetter() {
 
 int isCharacterDigit() {
 
-  // if (character >= '0')
-  //   if (character <= '9')
-  //     return 1;
-  //   else
-  //     return 0;
-  // else
-  //   return 0;
-
-  if (character >= '0' && character <= '9')
-    return 1;
+  if (character >= '0')
+    if (character <= '9')
+      return 1;
+    else
+      return 0;
   else
     return 0;
+
+  // if (character >= '0' && character <= '9')
+  //   return 1;
+  // else
+  //   return 0;
 }
 
 int isCharacterLetterOrDigitOrUnderscore() {
@@ -2171,7 +2190,7 @@ int getSymbol() {
 void createSymbolTableEntry(int whichTable, int* string, int line, int class, int type, int value, int address, int sizeY, int sizeX) {
   int* newEntry;
 
-  newEntry = malloc(2 * SIZEOFINTSTAR + 8 * SIZEOFINT);
+  newEntry = malloc(4 * SIZEOFINTSTAR + 8 * SIZEOFINT);
 
   setString(newEntry, string);
   setLineNumber(newEntry, line);
@@ -2181,6 +2200,8 @@ void createSymbolTableEntry(int whichTable, int* string, int line, int class, in
   setAddress(newEntry, address);
   setSizeY(newEntry, sizeY);
   setSizeX(newEntry, sizeX);
+  setReferenceType(newEntry, (int*) 0);
+  setNextField(newEntry, (int*) 0);
 
   // create entry at head of symbol table
   if (whichTable == GLOBAL_TABLE) {
@@ -2224,6 +2245,38 @@ int* getSymbolTableEntry(int* string, int class) {
   }
 
   return searchSymbolTable(global_symbol_table, string, class);
+}
+
+void createStructTableEntry(int* entry, int* string, int line, int class, int type, int value, int address, int sizeY, int sizeX) {
+  int* newEntry;
+  int* previous;
+
+  newEntry = malloc(4 * SIZEOFINTSTAR + 8 * SIZEOFINT);
+  previous = getNextField(entry);
+  setString(newEntry, string);
+  setLineNumber(newEntry, line);
+  setClass(newEntry, class);
+  setType(newEntry, type);
+  setValue(newEntry, value);
+  setAddress(newEntry, address);
+  setSizeY(newEntry, sizeY);
+  setSizeX(newEntry, sizeX);
+  setReferenceType(newEntry, (int*) 0);
+  setNextField(newEntry, previous);
+  setNextField(entry, newEntry);
+}
+
+int* searchStructTable(int* entry, int* string, int class) {
+  while (entry != (int*) 0) {
+    if (stringCompare(string, getString(entry)))
+      if (class == getClass(entry))
+        return entry;
+
+
+    entry = getNextField(entry);
+  }
+
+  return (int*) 0;
 }
 
 int isUndefinedProcedure(int* entry) {
@@ -2911,6 +2964,10 @@ int gr_factor(int* constant) {
         talloc();
         emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), getAddress(array));
         emitRFormat(OP_SPECIAL, getScope(array), currentTemporary(), currentTemporary(), FCT_ADDU);
+      } else if (getType(array) == STRUCT_T) {
+        talloc();
+        emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), getAddress(array));
+        emitRFormat(OP_SPECIAL, getScope(array), currentTemporary(), currentTemporary(), FCT_ADDU);
       } else {
         type = load_variable(variableOrProcedureName);
       }
@@ -3465,18 +3522,12 @@ int* manageList(int input) {
   return entry;
 }
 void reverseBoolean() {
- emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 3);
- emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
- emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
- emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
+  emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 3);
+  emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
+  emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
+  emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
 }
-// void reverseBoolean() {
-//   // emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 4);
-//   // emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
-//   // emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
-//   // emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
-// }
-// &&
+
 int gr_andExpression(int* fixupBoolean) {
   int ltype;
   int rtype;
@@ -3563,7 +3614,7 @@ int gr_expression(int* fixupBoolean) {
 
   if (symbol == SYM_OR) {
     *(fixupBoolean + 1) = (int) manageList(binaryLength);
-    head = (int*) *(fixupBoolean + 1);
+    head = (int*) * (fixupBoolean + 1);
     emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 0);
   }
 
@@ -3578,8 +3629,6 @@ int gr_expression(int* fixupBoolean) {
         tfree(1);//HERE
       }
       fixup_relative(*shead);
-
-      //print((int*)"debug2");
       // *(fixupBoolean) = 0;
       // *(fixupBoolean + 1) = 0;
     }
@@ -3844,22 +3893,22 @@ void gr_if() {
 
           // if the "if" case was true, we jump here
           fixup_relative(brForwardToEnd);
-        } else{
+        } else {
           // if the "if" case was not true, we jump here
           fixup_relative(brForwardToElseOrEnd);
 
-        if (*(fixupBoolean) != 0) {
-          head = (int*) * (fixupBoolean);
-          while (*(head + 1) != 0) {
+          if (*(fixupBoolean) != 0) {
+            head = (int*) * (fixupBoolean);
+            while (*(head + 1) != 0) {
+              fixup_relative(*head);
+              head = (int*) * (head + 1);
+              tfree(1);//HERE
+            }
             fixup_relative(*head);
-            head = (int*) * (head + 1);
-            tfree(1);//HERE
+            // *(fixupBoolean) = 0;
+            // *(fixupBoolean + 1) = 0;
           }
-          fixup_relative(*head);
-          // *(fixupBoolean) = 0;
-          // *(fixupBoolean + 1) = 0;
         }
-      }
       } else
         syntaxErrorSymbol(SYM_RPARENTHESIS);
     } else
@@ -4043,6 +4092,9 @@ void gr_statement() {
       else
         syntaxErrorSymbol(SYM_ASSIGN);
 
+      rtype = gr_expression(fixupBoolean);
+
+
       emitIFormat(OP_SW, previousTemporary(), currentTemporary(), 0);
 
       tfree(2);
@@ -4211,19 +4263,9 @@ void gr_variable(int offset) {
       else
         size = sizeY - 1;
     }
-
-    //if(offset < 0)//@todo ist die zeile noetig?
     offset = offset - size * WORDSIZE;
 
-
     if (type == STRUCTPOINTER_T) {
-      // print((int*)"der STRUCTPOINTER ");
-      // print((int*)identifier);
-      // print((int*)" wurde gefunden");
-      //print(itoa())
-      //print((int*));
-      println();
-      println();
       createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, sizeY, sizeX);
       referenceType = searchSymbolTable(global_symbol_table, firstIdentifier, VARIABLE);
       setReferenceType(local_symbol_table, getString(referenceType));
@@ -4453,7 +4495,7 @@ void gr_procedure(int* procedure, int returnType) {
 
   while (local_symbol_table != (int*)0) {
     toFree = (int*)(*local_symbol_table);
-    free(local_symbol_table);
+    //free(local_symbol_table);
     local_symbol_table = toFree;
   }
 
@@ -4462,35 +4504,6 @@ void gr_procedure(int* procedure, int returnType) {
   // assert: allocatedTemporaries == 0
 }
 
-void createStructTableEntry(int* entry, int* string, int line, int class, int type, int value, int address, int size, int size2d) {
-  int* newEntry;
-
-  newEntry = malloc(4 * SIZEOFINTSTAR + 8 * SIZEOFINT);
-
-  setString(newEntry, string);
-  setLineNumber(newEntry, line);
-  setClass(newEntry, class);
-  setType(newEntry, type);
-  setValue(newEntry, value);
-  setAddress(newEntry, address);
-  setSizeX(newEntry, size);
-  setSizeY(newEntry, size2d);
-  setReferenceType(newEntry, (int*) 0);
-  setNextField(entry, newEntry);
-}
-
-int* searchStructTable(int* entry, int* string, int class) {
-  while (entry != (int*) 0) {
-    if (stringCompare(string, getString(entry)))
-      if (class == getClass(entry))
-        return entry;
-
-
-    entry = getNextField(entry);
-  }
-
-  return (int*) 0;
-}
 
 int lookForVariableType() {
   if (symbol == SYM_INT)
@@ -4541,37 +4554,33 @@ int checkForSTRUCTPOINTER_T(int type) {
   return type;
 }
 
-//@todo
 int gr_struct() {
-  int  type;
+  int type;
   int* entry;
-  int* variables;
+  int* variableInStruct;
 
-  //load address of struct
   type = load_variable(identifier);
+
   entry = getVariable(identifier);
 
-  //find reference type of that struct
-  entry = getReferenceType(entry);
+
+  entry = getReferenceType(entry);//struct (string)
   getSymbol();
 
-  variables = searchSymbolTable(global_symbol_table, entry, VARIABLE);
-  entry = searchStructTable(variables, identifier, VARIABLE);
+  variableInStruct = searchSymbolTable(global_symbol_table, entry, VARIABLE);//address of variable in struct
+  entry = searchStructTable(variableInStruct, identifier, VARIABLE);//struct address
 
-  //load offset of member
   load_integer(getAddress(entry) * (-1));
-  emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
 
+
+  emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
   emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
   tfree(1);
 
-  getSymbol();
 
+  getSymbol();
   return type;
 }
-
-
-
 
 void gr_cstar() {
   int type;
@@ -4643,7 +4652,6 @@ void gr_cstar() {
           createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, type, 0, 0, 0, 0);
 
           entry = global_symbol_table;
-
           while (lookForVariableType()) {
 
             size = 1;
@@ -4686,20 +4694,19 @@ void gr_cstar() {
                   size = sizeY * sizeX;
                 }
 
-                fields = fields + (size - 1);//@todo: size passt hier? -1 ????
+                fields = fields + (size - 1);
 
               } else {
                 fields = fields + 1;
               }
-
               if (type == STRUCTPOINTER_T) {
-                createStructTableEntry(entry, identifier, lineNumber, VARIABLE, type, 0, -fields, sizeY, sizeX);
+                createStructTableEntry(entry, identifier, lineNumber, VARIABLE, type, 0, -fields * WORDSIZE, sizeY, sizeX);
                 setReferenceType(searchStructTable(entry, identifier, VARIABLE), getSymbolTableEntry(entryString, VARIABLE));//todo: ??
               } else if (type == STRUCT_T) {
-                createStructTableEntry(entry, identifier, lineNumber, VARIABLE, type, 0, -fields, sizeY, sizeX);
+                createStructTableEntry(entry, identifier, lineNumber, VARIABLE, type, 0, -fields * WORDSIZE, sizeY, sizeX);
                 setReferenceType(searchStructTable(entry, identifier, VARIABLE), getSymbolTableEntry(entryString, VARIABLE));
               } else {
-                createStructTableEntry(entry, identifier, lineNumber, VARIABLE, type, 0, -fields, sizeX, sizeX);
+                createStructTableEntry(entry, identifier, lineNumber, VARIABLE, type, 0, -fields * WORDSIZE, sizeX, sizeX);
               }
 
             } else {
@@ -5242,6 +5249,7 @@ void emitGlobalsStrings() {
     if (getClass(entry) == VARIABLE) {
       if (getType(entry) != STRUCT_T) {
         storeBinary(binaryLength, getValue(entry));
+
         if (getSizeY(entry) == 0) {
           binaryLength = binaryLength + WORDSIZE;
         } else {
@@ -7928,9 +7936,17 @@ void printSymbolCount() {
   }
 }
 
+
+void structTest(struct symbolTableEntry* entry) {
+  entry -> string = (int*) "after the test";
+}
+
 //@todo
 //@todoteam
 int main(int argc, int* argv) {
+
+  struct globalstruct* teststruct;
+  struct symbolTableEntry* assignmentTest;
 
   initLibrary();
 
@@ -7948,6 +7964,37 @@ int main(int argc, int* argv) {
 
   print((int*)"This is knights Selfie");
   println();
+
+
+  print((int*) "Structs:");
+  println();
+
+  assignmentTest = (struct symbolTableEntry*) malloc(4 * SIZEOFINTSTAR + 8 * SIZEOFINT);
+  teststruct = (struct globalstruct*)malloc(34 * SIZEOFINT);
+  //teststruct = (struct globalstruct*) malloc(8);
+  teststruct -> x = 1;
+  teststruct -> y = 42;
+
+  print((int*) " teststruct->x = 1: ");
+  print(itoa(teststruct->x, string_buffer, 10, 0, 0));
+  println();
+
+  print((int*) " teststruct->y = 42: ");
+  print(itoa(teststruct->y, string_buffer, 10, 0, 0));
+  println();
+
+  assignmentTest->string = (int*) "before the test";
+
+  print((int*) " before: ");
+  print((int*)assignmentTest->string);
+  println();
+
+  structTest(assignmentTest);
+  print((int*) " after: ");
+  print((int*)assignmentTest->string);
+  println();
+
+  //printSymbolCount();
 
   if (selfie(argc, (int*) argv) != 0) {
     print(selfieName);
