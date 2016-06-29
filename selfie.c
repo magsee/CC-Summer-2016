@@ -113,6 +113,7 @@ void printString(int* s);
 int roundUp(int n, int m);
 
 int* malloc(int size);
+void free(int* address);
 void exit(int code);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -344,6 +345,7 @@ int isINTMIN    = 0;
 int character; // most recently read character
 int symbol;    // most recently recognized symbol
 
+int freeList = 0; //freeList pointer to free memory
 int* sourceName = (int*) 0; // name of source file
 int sourceFD    = 0;        // file descriptor of open source file
 
@@ -631,6 +633,8 @@ void emitLeftShiftBy(int b);
 void emitMainEntry();
 void fixRegisterInitialization();
 
+
+
 // -----------------------------------------------------------------
 // --------------------------- COMPILER ----------------------------
 // -----------------------------------------------------------------
@@ -898,6 +902,7 @@ void implementOpen();
 
 void emitMalloc();
 void implementMalloc();
+
 void emitFree();
 void implementFree();
 
@@ -916,7 +921,6 @@ int SYSCALL_OPEN   = 4005;
 
 int SYSCALL_MALLOC = 4045;
 int SYSCALL_FREE   = 4046;
-
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
 // -----------------------------------------------------------------
@@ -1122,8 +1126,6 @@ int reg_lo = 0; // lo register for multiplication/division
 int* pt = (int*) 0; // page table
 
 int brk = 0; // break between code, data, and heap
-
-int* freeList = (int*)0; // list containing addresses to previously freed memory
 
 int trap = 0; // flag for creating a trap
 
@@ -4366,6 +4368,7 @@ void gr_procedure(int* procedure, int returnType) {
   int* entry;
   int* toFree;
 
+
   currentProcedureName = procedure;
 
   numberOfParameters = 0;
@@ -5797,6 +5800,11 @@ void emitMalloc() {
 void implementMalloc() {
   int size;
   int bump;
+  int booleandummi;
+  int symTabEntSize;
+
+  booleandummi = 0;
+  symTabEntSize = 4 * SIZEOFINTSTAR + 8 * SIZEOFINT;
 
   if (debug_malloc) {
     print(binaryName);
@@ -5808,26 +5816,45 @@ void implementMalloc() {
 
   size = roundUp(*(registers + REG_A0), WORDSIZE);
 
-  bump = brk;
+  if (size == symTabEntSize)
+    if (freeList != 0)
+      booleandummi = 1;
 
-  if (bump + size >= *(registers + REG_SP))
-    throwException(EXCEPTION_HEAPOVERFLOW, 0);
-  else {
-    *(registers + REG_V0) = bump;
-
-    brk = bump + size;
+  if (booleandummi) {
+    *(registers + REG_V0) = (int) freeList;
+    freeList = loadVirtualMemory(pt, freeList);
 
     if (debug_malloc) {
       print(binaryName);
-      print((int*) ": actually mallocating ");
+      print((int*) ": is reusing  ");
       print(itoa(size, string_buffer, 10, 0, 0));
-      print((int*) " bytes at virtual address ");
-      print(itoa(bump, string_buffer, 16, 8, 0));
+      print((int*) " bytes freed of memory at virtual address ");
+      print(itoa(*(registers + REG_V0), string_buffer, 16, 8, 0));
       println();
+    }
+    booleandummi = 0;
+  } else {
+
+    bump = brk;
+
+    if (bump + size >= *(registers + REG_SP))
+      throwException(EXCEPTION_HEAPOVERFLOW, 0);
+    else {
+      *(registers + REG_V0) = bump;
+
+      brk = bump + size;
+
+      if (debug_malloc) {
+        print(binaryName);
+        print((int*) ": actually mallocating ");
+        print(itoa(size, string_buffer, 10, 0, 0));
+        print((int*) " bytes at virtual address ");
+        print(itoa(bump, string_buffer, 16, 8, 0));
+        println();
+      }
     }
   }
 }
-
 void emitFree() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "free", 0, PROCEDURE, INTSTAR_T, 0, binaryLength, 0, 0);
 
@@ -5849,9 +5876,17 @@ void implementFree() {
     println();
   }
 
-  storeVirtualMemory(pt, *(registers + REG_A0), *freeList);
-  storeVirtualMemory(pt, freeList, *(registers + REG_A0));
+  storeVirtualMemory(pt, *(registers + REG_A0), freeList);
+  freeList = *(registers + REG_A0);
 
+  if (debug_malloc) {
+    print(binaryName);
+    print((int*) "symboltable entry is freed at virtual address ");
+    print(itoa((int) * (registers + REG_A0), string_buffer, 16, 0, 0));
+    println();
+  }
+
+  *(registers + REG_V0) = 0;
 }
 
 // -----------------------------------------------------------------
@@ -7937,16 +7972,7 @@ void printSymbolCount() {
 }
 
 
-void structTest(struct symbolTableEntry* entry) {
-  entry -> string = (int*) "after the test";
-}
-
-//@todo
-//@todoteam
 int main(int argc, int* argv) {
-
-  struct globalstruct* teststruct;
-  struct symbolTableEntry* assignmentTest;
 
   initLibrary();
 
@@ -7965,36 +7991,6 @@ int main(int argc, int* argv) {
   print((int*)"This is knights Selfie");
   println();
 
-
-  print((int*) "Structs:");
-  println();
-
-  assignmentTest = (struct symbolTableEntry*) malloc(4 * SIZEOFINTSTAR + 8 * SIZEOFINT);
-  teststruct = (struct globalstruct*)malloc(34 * SIZEOFINT);
-  //teststruct = (struct globalstruct*) malloc(8);
-  teststruct -> x = 1;
-  teststruct -> y = 42;
-
-  print((int*) " teststruct->x = 1: ");
-  print(itoa(teststruct->x, string_buffer, 10, 0, 0));
-  println();
-
-  print((int*) " teststruct->y = 42: ");
-  print(itoa(teststruct->y, string_buffer, 10, 0, 0));
-  println();
-
-  assignmentTest->string = (int*) "before the test";
-
-  print((int*) " before: ");
-  print((int*)assignmentTest->string);
-  println();
-
-  structTest(assignmentTest);
-  print((int*) " after: ");
-  print((int*)assignmentTest->string);
-  println();
-
-  //printSymbolCount();
 
   if (selfie(argc, (int*) argv) != 0) {
     print(selfieName);
